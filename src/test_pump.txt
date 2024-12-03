@@ -1,0 +1,36 @@
+#include "LCD.h"
+#include <Arduino.h>
+#include "Debug.hpp"
+#include "Pump.h"
+
+LCD lcd;
+
+Pump pump = Pump();
+
+void setup(void)
+{
+    INITIALISE_DBG(115200);
+    // lcd.begin();
+}
+
+void loop(void)
+{
+    Serial.println("Enter command between -100 and 100: ");
+
+    int Output;
+    while (Serial.available() == 0)
+    {
+    }
+    Output = Serial.parseInt();
+
+    pump.sendCommand(Output);
+
+    PumpData S = pump.getCommand();
+
+    Serial.print("Speed: ");
+    Serial.println(S.speed);
+    Serial.print("Direction: ");
+    Serial.println(S.direction);
+
+    // lcd.command();
+}
