@@ -1,6 +1,6 @@
 #include "Sd.hpp"
 
-Sd::Sd(size_t bufferSize) : isFileOpen(false), maxBufferSize(bufferSize) {}
+Sd::Sd(size_t bufferSize) : isFileOpen(false), initialised(false), maxBufferSize(bufferSize) {}
 
 Sd::~Sd()
 {
@@ -12,34 +12,44 @@ Sd::~Sd()
     }
 }
 
-bool Sd::init(int CS, String StartMsg, String prefix)
+bool Sd::createFile(String StartMsg, String prefix)
 {
-    bool success = true;
+    bool success = false;
 
-    // See if the card is present and can be initialized:
-    if (!SD.begin(CS))
+    fileName = createUniqueLogFile(prefix);
+    DBG("File name: " + fileName);
+    dataFile = SD.open(fileName.c_str(), FILE_WRITE);
+    if (dataFile)
     {
-        success = false;
+        dataFile.println(StartMsg);
+        dataFile.flush();
+        isFileOpen = true;
     }
     else
     {
-        DBG("Card initialized.");
-        fileName = createUniqueLogFile(prefix);
-        DBG("File name: " + fileName);
-        dataFile = SD.open(fileName.c_str(), FILE_WRITE);
-        if (dataFile)
-        {
-            dataFile.println(StartMsg);
-            dataFile.flush();
-            isFileOpen = true;
-        }
-        else
-        {
-            success = false;
-        }
+        success = false;
     }
 
     return success;
+}
+
+bool Sd::init(int CS)
+{
+    if (!initialised)
+    {
+        // See if the card is present and can be initialized:
+        if (!SD.begin(CS))
+        {
+            DBG("Card failed, or not present");
+            initialised = false;
+        }
+        else
+        {
+            DBG("Card initialized.");
+            initialised = true;
+        }
+    }
+    return initialised;
 }
 
 bool Sd::writeToBuffer(String dataString)
@@ -82,4 +92,82 @@ String Sd::createUniqueLogFile(String prefix)
 bool Sd::isInitialized()
 {
     return isFileOpen;
+}
+
+bool Sd::loadGainsFromFile(const char *filename, gainScheduleData &gainSchedule)
+{
+    bool gainsLoaded = false;
+
+    File file = SD.open(filename, FILE_READ);
+    if (!file)
+    {
+        DBG("Failed to open file: " + String(filename));
+    }
+
+    gainSchedule.height = 0;
+    char line[64]; // Buffer to hold each line (adjust size as needed)
+    while (file.available() && gainSchedule.height < MAX_GAIN_ROWS)
+    {
+        // Read a line from the file
+        size_t len = file.readBytesUntil('\n', line, sizeof(line) - 1);
+        line[len] = '\0'; // Null-terminate the string
+
+        // Skip empty lines
+        if (len == 0)
+        {
+            continue;
+        }
+
+        // Parse the line into four float values
+        char *ptr = line;
+        for (uint8_t col = 0; col < gainScheduleData::width; ++col)
+        {
+            // Skip leading whitespace or commas
+            while (*ptr == ' ' || *ptr == '\t' || *ptr == ',')
+            {
+                ++ptr;
+            }
+
+            if (*ptr == '\0')
+            {
+                DBG("Incomplete data in line");
+                break;
+            }
+
+            // Parse the float value
+            char *endPtr;
+            float value = strtof(ptr, &endPtr);
+
+            if (ptr == endPtr)
+            {
+                Serial.print("Failed to parse float in line: ");
+                DBG(line);
+                break;
+            }
+
+            // Store the value
+            gainSchedule.data[gainSchedule.height][col] = value;
+
+            // Move the pointer to the character after the comma
+            ptr = endPtr;
+
+            // Skip the comma if it's there
+            if (*ptr == ',')
+            {
+                ++ptr;
+            }
+        }
+
+        // Increment the row count
+        ++gainSchedule.height;
+    }
+
+    if (gainSchedule.height > 0)
+    {
+        gainsLoaded = true;
+    }
+
+    file.close();
+
+    return gainsLoaded;
 }

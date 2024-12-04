@@ -1,9 +1,12 @@
 #include "Controller.h"
 
-Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), Kp(0.1), Ki(0), Kd(0), logTime(100000)
+Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), Kp(1), Ki(0), Kd(0), logTime(100000)
 {
     control_pid.SetMode(AUTOMATIC);
     control_pid.SetOutputLimits(-100, 100); // 0-100% speed, sign indicates direction
+
+    sdInitialised = sd.init(SD_CS);
+    initSensor(0.5);
 }
 
 Controller::~Controller()
@@ -17,20 +20,38 @@ Controller::~Controller()
 
 bool Controller::init(sim_data &data_)
 {
-    dataInitialised = false;
+    // initialise gain schedules
+    initGainSchedule();
 
-    initSensor(0.5);
+    data = &data_;
+    dataInitialised = true;
 
-    if (sensorInitialised)
+    return dataInitialised && sensorInitialised;
+}
+
+bool Controller::initGainSchedule()
+{
+    // there should be a file on the SD card that contains the gain schedules for the controller
+    // the file should be in the format:
+    // Kp, Ki, Kd, pressure
+
+    // read the file and populate the gain schedule array
+
+    if (sdInitialised)
     {
-        if (sensorInitialised)
+        gainScheduleInitialised = sd.loadGainsFromFile("gains.csv", gainSchedule);
+        if (!gainScheduleInitialised)
         {
-            data = &data_;
-            dataInitialised = true;
+            DBG("Failed to load gain schedule from SD card");
         }
     }
+    else
+    {
+        DBG("SD card not initialised");
+        gainScheduleInitialised = false;
+    }
 
-    return dataInitialised;
+    return gainScheduleInitialised;
 }
 
 bool Controller::initSensor(float alpha_)
@@ -56,7 +77,7 @@ bool Controller::initSensor(float alpha_)
 
 bool Controller::run()
 {
-    if (sensorInitialised && dataInitialised)
+    if (sensorInitialised && dataInitialised && gainScheduleInitialised)
     {
         running = true;
         startMillis = millis();
@@ -68,22 +89,6 @@ bool Controller::run()
     }
 }
 
-bool Controller::initSD(u_int8_t CS, String text)
-{
-    sdInitialised = sd.init(CS, text, "cal");
-
-    if (sdInitialised)
-    {
-        DBG("sd successful");
-    }
-    else
-    {
-        DBG("sd failed");
-    }
-
-    return sdInitialised;
-}
-
 bool Controller::initCalibrateSystem(float setPointPressure)
 {
     bool initialised = false;
@@ -92,28 +97,29 @@ bool Controller::initCalibrateSystem(float setPointPressure)
 
     calibrationState = ground; // set initial state
 
-    initSensor(0.5);
-    initSD(SD_CS, "state, time, pressure");
+    bool fileCreated = sd.createFile("state, time, pressure", "cal");
 
-    initialised = sensorInitialised && sdInitialised;
+    initialised = sensorInitialised && sdInitialised && fileCreated;
 
     return initialised;
 }
 
 bool Controller::startCalibrateSystem()
 {
-    if ((!calibrationRunning) && sensorInitialised && sdInitialised)
+    if (sensorInitialised && sdInitialised)
     {
-        calibrationRunning = true;
-        startMillis = millis();
-    }
+        if ((!calibrationRunning))
+        {
+            calibrationRunning = true;
+            startMillis = millis();
+        }
 
-    if (!LogDesiredData(String(calibrationState), true))
-    {
-        DBG("Failed to log data to SD");
-        calibrationRunning = false;
+        if (!LogDesiredData(String(calibrationState), true))
+        {
+            DBG("Failed to log data to SD");
+            calibrationRunning = false;
+        }
     }
-
     return calibrationRunning;
 }
 
@@ -145,6 +151,8 @@ bool Controller::calibrateIterate()
 
     if (calibrationRunning && updateReading())
     {
+        updateGains();
+
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
         if (calibrationState == ground)
@@ -185,6 +193,30 @@ bool Controller::calibrateIterate()
         }
     }
     return calibrating;
+}
+
+void Controller::updateGains()
+{
+    // gain schedule array should be sorted from lowest to highest pressure
+    // for efficiency but also to ensure that the correct gains are selected
+    if (!gainScheduleInitialised)
+    {
+        DBG("Gain schedule not initialised");
+        return;
+    }
+
+    for (int i = 0; i < gainSchedule.height; i++)
+    {
+        if (Input >= gainSchedule.data[i][3])
+        {
+            Kp = gainSchedule.data[i][0];
+            Ki = gainSchedule.data[i][1];
+            Kd = gainSchedule.data[i][2];
+
+            control_pid.SetTunings(Kp, Ki, Kd);
+            break;
+        }
+    }
 }
 
 void Controller::stop()

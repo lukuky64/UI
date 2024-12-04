@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "LCD.h"
+#include "UI.h"
 #include "image_data.h"
 #include "Debug.hpp"
 
@@ -8,11 +8,11 @@ IDEAS
 
 */
 
-LCD::LCD()
+UI::UI()
 {
 }
 
-void LCD::begin()
+void UI::begin()
 {
     uint16_t ID = tft.readID();
     if (ID == 0xD3D3)
@@ -24,7 +24,7 @@ void LCD::begin()
     state = START;
 }
 
-void LCD::command()
+void UI::command()
 {
     switch (state)
     {
@@ -61,7 +61,7 @@ void LCD::command()
     }
 }
 
-bool LCD::Touch_getXY()
+bool UI::Touch_getXY()
 {
     TSPoint p = ts.getPoint();
     pinMode(YP, OUTPUT); // restore shared pins
@@ -77,7 +77,7 @@ bool LCD::Touch_getXY()
     return pressed;
 }
 
-bool LCD::checkButton(Adafruit_GFX_Button btn, bool down)
+bool UI::checkButton(Adafruit_GFX_Button btn, bool down)
 {
     bool isPressed = down && btn.contains(pixel_x, pixel_y);
     btn.press(isPressed);
@@ -101,7 +101,7 @@ bool LCD::checkButton(Adafruit_GFX_Button btn, bool down)
 
 // ************************ START ************************
 
-void LCD::startPage()
+void UI::startPage()
 {
     Adafruit_GFX_Button create_btn, upload_btn, settings_btn;
 
@@ -146,7 +146,7 @@ void LCD::startPage()
 
 // ************************ SETTINGS ************************
 
-void LCD::settingsPage()
+void UI::settingsPage()
 {
     Adafruit_GFX_Button back_btn, calibrate_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
@@ -180,7 +180,7 @@ void LCD::settingsPage()
     tft.fillScreen(BLACK);
 }
 
-void LCD::drawRectWithText(int16_t yPos, uint16_t colour, String text)
+void UI::drawRectWithText(int16_t yPos, uint16_t colour, String text)
 {
     tft.fillRect(0, yPos, SCREEN_WIDTH, 40, colour);
     tft.setTextColor(BLACK);      // Set text color to white
@@ -189,7 +189,7 @@ void LCD::drawRectWithText(int16_t yPos, uint16_t colour, String text)
     tft.print(text);              // Display the text
 }
 
-void LCD::progressBar(String text, float progress, int16_t yPos)
+void UI::progressBar(String text, float progress, int16_t yPos)
 {
     float progressWidth = SCREEN_WIDTH * progress;
 
@@ -204,7 +204,7 @@ void LCD::progressBar(String text, float progress, int16_t yPos)
 
 // ************************ CALIBRATION ************************
 
-void LCD::calibrationPage()
+void UI::calibrationPage()
 {
     Adafruit_GFX_Button back_btn, begin_btn, stop_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
@@ -256,6 +256,7 @@ void LCD::calibrationPage()
                     delay(30);
                 }
 
+                // main calibration loop
                 while (controller.calibrateIterate())
                 {
                     down = Touch_getXY();
@@ -296,7 +297,7 @@ void LCD::calibrationPage()
 
 // ************************ CREATE ************************
 
-void LCD::createPage()
+void UI::createPage()
 {
     Adafruit_GFX_Button point_btn, motor_btn, back_btn;
 
@@ -344,7 +345,7 @@ void LCD::createPage()
 
 // ************************ UPLOAD ************************
 
-void LCD::uploadPage()
+void UI::uploadPage()
 {
     Adafruit_GFX_Button back_btn;
 
@@ -372,7 +373,7 @@ void LCD::uploadPage()
 
 // ************************ POINT ************************
 
-void LCD::pointPage()
+void UI::pointPage()
 {
     Adafruit_GFX_Button back_btn, save_btn;
 
@@ -413,7 +414,7 @@ void LCD::pointPage()
     tft.fillScreen(BLACK);
 }
 
-void LCD::drawGraph(float apogee, float burnout_time)
+void UI::drawGraph(float apogee, float burnout_time)
 {
     // DBG("set apogee: " + String(apogee));
     // DBG("set burnout_time: " + String(burnout_time));
@@ -459,12 +460,12 @@ void LCD::drawGraph(float apogee, float burnout_time)
     delay(50);
 }
 
-float LCD::mapFloat(float x, float in_min, float in_max, float out_min, float out_max)
+float UI::mapFloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void LCD::updateTextBox(String text)
+void UI::updateTextBox(String text)
 {
     // Clear the text area where you want to update the apogee value
     tft.fillRect(20, 170, 280, 22, WHITE); // Adjust width/height as needed to clear text area
@@ -474,7 +475,7 @@ void LCD::updateTextBox(String text)
 }
 
 // Function to draw sliders on the screen
-void LCD::drawSliders()
+void UI::drawSliders()
 {
     // Draw slider 1 (apogee)
     tft.fillRect(20, 250, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
@@ -490,7 +491,7 @@ void LCD::drawSliders()
 }
 
 // Function to handle slider touch
-void LCD::handleSliderTouch()
+void UI::handleSliderTouch()
 {
     if (Touch_getXY())
     {
@@ -515,7 +516,7 @@ void LCD::handleSliderTouch()
 
 // ************************ RUN ************************
 
-void LCD::runPage()
+void UI::runPage()
 {
     GRAPH_HEIGHT *= 2;
 
@@ -539,8 +540,6 @@ void LCD::runPage()
 
         if (checkButton(start_btn, down))
         {
-            bool run = true;
-
             stop_btn.drawButton(false);
 
             int prev_x = 0;
@@ -556,7 +555,7 @@ void LCD::runPage()
 
             DBG("Controller initialised: " + String(initialisedController));
 
-            controller.run();
+            bool run = controller.run();
 
             // uint32_t prev_time = micros();
 
@@ -643,7 +642,7 @@ void LCD::runPage()
 
 // ************************ MOTOR ************************
 
-void LCD::motorPage()
+void UI::motorPage()
 {
     Adafruit_GFX_Button back_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
@@ -670,7 +669,7 @@ void LCD::motorPage()
 
 // ************************ END ************************
 
-void LCD::endPage()
+void UI::endPage()
 {
     //
 }

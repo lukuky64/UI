@@ -1,16 +1,16 @@
-#include "LCD.h"
+#include "UI.h"
 #include <Arduino.h>
 #include "Debug.hpp"
 
-LCD lcd;
+UI ui;
 
 void setup(void)
 {
     INITIALISE_DBG(115200);
-    lcd.begin();
+    ui.begin();
 }
 
 void loop(void)
 {
-    lcd.command();
+    ui.command();
 }

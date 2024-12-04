@@ -77,13 +77,24 @@ function [Qpumping, Qleaking, ln_dP_leak, P_atm] = create_data(filename)
     
 
 
-% pumping_time = data.time;
-% dt_pumping = mean(diff(pumping_time));
-% 
-% Fs = 1/dt_pumping; % sampling frequnecy
-% cutoff_frequnecy_Hz = 1;
-% 
-% 
+pumping_time = data.time;
+dt_pumping = mean(diff(pumping_time));
+
+Fs = 1/dt_pumping; % sampling frequnecy
+cutoff_frequnecy_Hz = 1;
+
+
+
+
+order = 5;
+framelen = 19;
+Qleaking(:, 1) = sgolayfilt(Qleaking(:, 1),order,framelen);
+Qpumping(:, 1) = sgolayfilt(Qpumping(:, 1),order,framelen);
+
+
+
+
+
 % Qleaking(:, 1) = lowpass(Qleaking(:, 1),cutoff_frequnecy_Hz,Fs);
 % Qpumping(:, 1) = lowpass(Qpumping(:, 1),cutoff_frequnecy_Hz,Fs);
 

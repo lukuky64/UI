@@ -8,6 +8,7 @@
 #include "PID_v1.hpp"
 #include "Debug.hpp"
 #include "SD.hpp"
+#include "gainScheduleData.h"
 
 class Controller
 {
@@ -28,8 +29,9 @@ public:
     bool calibrateIterate();
     bool updateReading();
     bool initSensor(float alpha_);
-    bool initSD(u_int8_t CS, String text);
     float getCalibrationProgress();
+    void updateGains();
+    bool initGainSchedule();
 
 private:
     Pump pump;
@@ -44,6 +46,8 @@ private:
     double Kp;
     double Ki;
     double Kd;
+
+    gainScheduleData gainSchedule;
 
     PID control_pid = PID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
@@ -68,6 +72,8 @@ private:
     float calibrationSetPointPressure;
 
     bool sdInitialised;
+
+    bool gainScheduleInitialised;
 
     float currentSeconds;
 

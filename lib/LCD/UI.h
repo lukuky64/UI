@@ -4,10 +4,10 @@
 #include "ROCKET_SIM.h"
 #include "Controller.h"
 
-class LCD
+class UI
 {
 public:
-    LCD();
+    UI();
     void begin();
     bool Touch_getXY();
     void command();
