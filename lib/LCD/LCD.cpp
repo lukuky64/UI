@@ -77,10 +77,8 @@ bool LCD::Touch_getXY()
     return pressed;
 }
 
-bool LCD::checkButton(Adafruit_GFX_Button btn)
+bool LCD::checkButton(Adafruit_GFX_Button btn, bool down)
 {
-    bool down = Touch_getXY();
-
     bool isPressed = down && btn.contains(pixel_x, pixel_y);
     btn.press(isPressed);
 
@@ -89,7 +87,14 @@ bool LCD::checkButton(Adafruit_GFX_Button btn)
         btn.drawButton();
     }
 
-    return btn.justPressed();
+    bool justPressed = btn.justPressed();
+
+    if (justPressed)
+    {
+        btn.drawButton(true);
+    }
+
+    return justPressed;
 }
 
 // ************************************************** PAGES **************************************************
@@ -117,34 +122,19 @@ void LCD::startPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        create_btn.press(down && create_btn.contains(pixel_x, pixel_y));
-        upload_btn.press(down && upload_btn.contains(pixel_x, pixel_y));
-        settings_btn.press(down && settings_btn.contains(pixel_x, pixel_y));
 
-        if (create_btn.justReleased())
-            create_btn.drawButton();
-        if (upload_btn.justReleased())
-            upload_btn.drawButton();
-        if (settings_btn.justReleased())
-            settings_btn.drawButton();
-        if (create_btn.justPressed())
+        if (checkButton(create_btn, down))
         {
-            create_btn.drawButton(true);
             state = CREATE;
-            // tft.fillRect(40, 80, 160, 80, GREEN);
             loop = false;
         }
-        if (upload_btn.justPressed())
+        if (checkButton(upload_btn, down))
         {
-            upload_btn.drawButton(true);
-            // tft.fillRect(40, 80, 160, 80, RED);
             loop = false;
         }
-        if (settings_btn.justPressed())
+        if (checkButton(settings_btn, down))
         {
-            settings_btn.drawButton(true);
             state = SETTINGS;
-            // tft.fillRect(40, 80, 160, 80, GREEN);
             loop = false;
         }
     }
@@ -170,31 +160,22 @@ void LCD::settingsPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
-        calibrate_btn.press(down && calibrate_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (calibrate_btn.justReleased())
-            calibrate_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = START;
             loop = false;
         }
 
-        if (calibrate_btn.justPressed())
+        if (checkButton(calibrate_btn, down))
         {
-            calibrate_btn.drawButton(true);
             state = CALIBRATE;
             loop = false;
         }
     }
 
     DBG("EXITING SETTINGS PAGE");
+
     // clear page before going to the next
     tft.fillScreen(BLACK);
 }
@@ -243,23 +224,14 @@ void LCD::calibrationPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
-        begin_btn.press(down && begin_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (begin_btn.justReleased())
-            begin_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = SETTINGS;
             loop = false;
         }
 
-        if (begin_btn.justPressed())
+        if (checkButton(begin_btn, down))
         {
             float pressureSetPoint = ROCKET_SIM::altitudeToPressure(3000);                // 3km setpoint
             bool calibrateInitialised = controller.initCalibrateSystem(pressureSetPoint); // setpoint for calibration
@@ -269,12 +241,14 @@ void LCD::calibrationPage()
             if (calibrateInitialised)
             {
                 DBG("Calibration initialised");
+
                 stop_btn.drawButton(true);
 
                 // tft.fillRect(40, 80, 160, 80, GREEN);
 
                 controller.startCalibrateSystem();
 
+                // 5 second delay to get some atmospheric data
                 for (int i = 0; i <= 100; i++)
                 {
                     controller.calibrateIterate();
@@ -287,12 +261,8 @@ void LCD::calibrationPage()
                     down = Touch_getXY();
                     stop_btn.press(down && begin_btn.contains(pixel_x, pixel_y));
 
-                    if (stop_btn.justReleased())
-                        stop_btn.drawButton();
-
-                    if (stop_btn.justPressed())
+                    if (checkButton(stop_btn, down))
                     {
-                        stop_btn.drawButton(true);
                         controller.stop();
                         break;
                     }
@@ -319,6 +289,7 @@ void LCD::calibrationPage()
     }
 
     DBG("EXITING CALIBRATION PAGE");
+
     // clear page before going to the next
     tft.fillScreen(BLACK);
 }
@@ -329,14 +300,12 @@ void LCD::createPage()
 {
     Adafruit_GFX_Button point_btn, motor_btn, back_btn;
 
-    // width of screen is 320
-    // height of screen is 480
-
     tft.drawRGBBitmap(0, 0, create_page, 320, 480);
 
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
     point_btn.initButton(&tft, 80, 455, 160, 50, BLACK, ORANGE, BLACK, (char *)"POINT", 2);
     motor_btn.initButton(&tft, 240, 455, 160, 50, BLACK, ORANGE, BLACK, (char *)"MOTOR", 2);
+
     back_btn.drawButton(false);
     point_btn.drawButton(false);
     motor_btn.drawButton(false);
@@ -345,37 +314,21 @@ void LCD::createPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        point_btn.press(down && point_btn.contains(pixel_x, pixel_y));
-        motor_btn.press(down && motor_btn.contains(pixel_x, pixel_y));
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (point_btn.justReleased())
-            point_btn.drawButton();
-
-        if (motor_btn.justReleased())
-            motor_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = START;
             loop = false;
         }
 
-        if (point_btn.justPressed())
+        if (checkButton(point_btn, down))
         {
-            point_btn.drawButton(true);
             // tft.fillRect(40, 80, 160, 80, GREEN);
-
             state = POINT;
             loop = false;
         }
-        if (motor_btn.justPressed())
+        if (checkButton(motor_btn, down))
         {
-            motor_btn.drawButton(true);
             // tft.fillRect(40, 80, 160, 80, RED);
 
             // disabling this function for now
@@ -403,20 +356,16 @@ void LCD::uploadPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = START;
             loop = false;
         }
     }
 
     DBG("EXITING UPLOAD PAGE");
+
     // clear page before going to the next
     tft.fillScreen(BLACK);
 }
@@ -441,23 +390,14 @@ void LCD::pointPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
-        save_btn.press(down && save_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (save_btn.justReleased())
-            save_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = CREATE;
             loop = false;
         }
 
-        if (save_btn.justPressed())
+        if (checkButton(save_btn, down))
         {
             save_btn.drawButton(true);
             // tft.fillRect(40, 80, 160, 80, GREEN);
@@ -536,9 +476,6 @@ void LCD::updateTextBox(String text)
 // Function to draw sliders on the screen
 void LCD::drawSliders()
 {
-    // Draw the background for sliders
-    // tft.fillRect(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2, GREEN);
-
     // Draw slider 1 (apogee)
     tft.fillRect(20, 250, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
     tft.fillRect(20, 250, mapFloat(slider1Value, 0, maxSlider1Value, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
@@ -591,6 +528,7 @@ void LCD::runPage()
 
     back_btn.drawButton(false);
     start_btn.drawButton(false);
+
     stop_btn.drawButton(true);
 
     bool loop = (data.num_points > 0);
@@ -598,19 +536,9 @@ void LCD::runPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
-        start_btn.press(down && start_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (start_btn.justReleased())
-            start_btn.drawButton();
-
-        if (start_btn.justPressed())
+        if (checkButton(start_btn, down))
         {
-            start_btn.drawButton(true);
-
             bool run = true;
 
             stop_btn.drawButton(false);
@@ -683,14 +611,9 @@ void LCD::runPage()
 
                 // Check if the stop button is pressed
                 bool down = Touch_getXY();
-                stop_btn.press(down && stop_btn.contains(pixel_x, pixel_y));
 
-                if (stop_btn.justReleased())
-                    stop_btn.drawButton();
-
-                if (stop_btn.justPressed())
+                if (checkButton(stop_btn, down))
                 {
-                    stop_btn.drawButton(true);
                     state = START;
                     loop = false;
                     run = false;
@@ -704,9 +627,8 @@ void LCD::runPage()
             }
         }
 
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
-            back_btn.drawButton(true);
             state = START;
             loop = false;
         }
@@ -732,12 +654,8 @@ void LCD::motorPage()
     while (loop)
     {
         bool down = Touch_getXY();
-        back_btn.press(down && back_btn.contains(pixel_x, pixel_y));
 
-        if (back_btn.justReleased())
-            back_btn.drawButton();
-
-        if (back_btn.justPressed())
+        if (checkButton(back_btn, down))
         {
             back_btn.drawButton(true);
             state = CREATE;

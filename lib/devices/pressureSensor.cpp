@@ -1,13 +1,13 @@
-#include "pressureSesor.h"
+#include "PressureSensor.h"
 
-pressureSesor::pressureSesor() : basePressure(0), ADC_RES(12)
+PressureSensor::PressureSensor() : basePressure(0), ADC_RES(12)
 {
     // from datasheet: 0psi = 0.5V, 75psi = 2.5V, 150psi = 4.5V
     scaleFactor = 75.0 / (2.5 - 0.5);
     scaleFactor *= 6894.76; // convert psi to Pa
 }
 
-bool pressureSesor::begin(u_int8_t sensorPin_)
+bool PressureSensor::begin(u_int8_t sensorPin_)
 {
     sensorType = analog;
     // ensure sensorPin is an analog pin
@@ -29,7 +29,7 @@ bool pressureSesor::begin(u_int8_t sensorPin_)
     return true;
 }
 
-bool pressureSesor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
+bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
 {
     sensorType = BMP280;
 
@@ -67,12 +67,12 @@ bool pressureSesor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
     return true;
 }
 
-float pressureSesor::getBasePressure()
+float PressureSensor::getBasePressure()
 {
     return basePressure;
 }
 
-float pressureSesor::getPressure(bool absolute)
+float PressureSensor::getPressure(bool absolute)
 {
     if (sensorType == BMP280)
     {
@@ -85,6 +85,10 @@ float pressureSesor::getPressure(bool absolute)
                 pressure += 101325; // convert to absolute pressure
                 // DBG(pressure);
             }
+        }
+        else
+        {
+            return -1;
         }
     }
     else if (sensorType == analog)

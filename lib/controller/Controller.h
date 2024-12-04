@@ -2,7 +2,7 @@
 #define CONTROLLER_H
 
 #include "Arduino.h"
-#include "pressureSesor.h"
+#include "pressureSensor.h"
 #include "Pump.h"
 #include "DataType.h"
 #include "PID_v1.hpp"
@@ -26,14 +26,14 @@ public:
     bool LogDesiredData(String firstData, bool forceLog);
     bool startCalibrateSystem();
     bool calibrateIterate();
-    void updateReading();
+    bool updateReading();
     bool initSensor();
     bool initSD(u_int8_t CS, String text);
     float getCalibrationProgress();
 
 private:
     Pump pump;
-    pressureSesor pressureSensor;
+    PressureSensor pressureSensor;
     sim_data *data = nullptr; // Pointer to sim_data
 
     float filteredReading; // initial guess of sea level pressure

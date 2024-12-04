@@ -106,10 +106,14 @@ bool Controller::startCalibrateSystem()
     {
         calibrationRunning = true;
         startMillis = millis();
-        return true;
     }
 
-    LogDesiredData(String(calibrationState), true);
+    if (!LogDesiredData(String(calibrationState), true))
+    {
+        DBG("Failed to log data to SD");
+        calibrationRunning = false;
+    }
+
     return calibrationRunning;
 }
 
@@ -139,9 +143,8 @@ bool Controller::calibrateIterate()
 {
     bool calibrating = true;
 
-    if (calibrationRunning)
+    if (calibrationRunning && updateReading())
     {
-        updateReading();
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
         if (calibrationState == ground)
@@ -174,7 +177,12 @@ bool Controller::calibrateIterate()
             }
         }
         // DBG(pressureSensor.getBasePressure());
-        LogDesiredData(String(calibrationState), false);
+        if (!LogDesiredData(String(calibrationState), false))
+        {
+            DBG("Failed to log data to SD");
+            calibrationRunning = false;
+            calibrating = false;
+        }
     }
     return calibrating;
 }
@@ -191,11 +199,20 @@ float Controller::getCalibrationProgress()
     return calibrationProgress;
 }
 
-void Controller::updateReading()
+bool Controller::updateReading()
 {
     float rawReading = pressureSensor.getPressure(true);
+
+    if (rawReading == -1)
+    {
+        DBG("Failed to get pressure reading");
+        return false;
+    }
+
     filteredReading = alpha * rawReading + (1 - alpha) * filteredReading;
     Input = filteredReading;
+
+    return true;
 }
 
 bool Controller::iterate()
@@ -206,7 +223,7 @@ bool Controller::iterate()
     {
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
-        updateReading();
+        running = updateReading();
 
         // find closest time in data
         for (i; i < data->num_points; i++)
@@ -223,19 +240,11 @@ bool Controller::iterate()
 
         Setpoint = float(data->pressure[i]);
 
-        // DBG(data->altitude[i]);
-        // DBG(data->pressure[i]);
-        // DBG(i);
-
         i++;
 
         control_pid.Compute();
 
         pump.sendCommand(Output);
-
-        // DBG(Input);
-        // DBG(Setpoint);
-        // DBG(Output);
 
         return true;
     }

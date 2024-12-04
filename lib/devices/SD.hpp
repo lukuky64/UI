@@ -17,6 +17,7 @@ public:
     bool writeToBuffer(String dataString);
     void flushBuffer();
     bool isInitialized();
+    bool checkDevice();
 
     String createUniqueLogFile(String prefix);
 

@@ -3,11 +3,11 @@
 #include <Adafruit_BMP280.h>
 #include "Debug.hpp"
 
-class pressureSesor
+class PressureSensor
 {
 
 public:
-    pressureSesor();
+    PressureSensor();
     bool begin(uint8_t sensorPin_);
     bool begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr);
 
