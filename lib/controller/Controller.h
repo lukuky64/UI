@@ -27,7 +27,7 @@ public:
     bool startCalibrateSystem();
     bool calibrateIterate();
     bool updateReading();
-    bool initSensor();
+    bool initSensor(float alpha_);
     bool initSD(u_int8_t CS, String text);
     float getCalibrationProgress();
 

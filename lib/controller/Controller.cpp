@@ -19,7 +19,7 @@ bool Controller::init(sim_data &data_)
 {
     dataInitialised = false;
 
-    initSensor();
+    initSensor(0.5);
 
     if (sensorInitialised)
     {
@@ -33,12 +33,12 @@ bool Controller::init(sim_data &data_)
     return dataInitialised;
 }
 
-bool Controller::initSensor()
+bool Controller::initSensor(float alpha_)
 {
     if (!sensorInitialised)
     {
         filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
-        alpha = 0.006;
+        alpha = alpha_;
         sensorInitialised = pressureSensor.begin(I2C_SDA, I2C_SCL, 0x76); // initialise BMP280 sensor
     }
 
@@ -92,7 +92,7 @@ bool Controller::initCalibrateSystem(float setPointPressure)
 
     calibrationState = ground; // set initial state
 
-    initSensor();
+    initSensor(0.5);
     initSD(SD_CS, "state, time, pressure");
 
     initialised = sensorInitialised && sdInitialised;

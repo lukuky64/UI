@@ -1,0 +1,69 @@
+<deployment-project plugin="plugin.apptool" plugin-version="1.0">
+  <configuration build-checksum="1516004765" file="/Users/lucas/Desktop/UTS/Rocketry/Internship/control calcs/test.prj" location="/Users/lucas/Desktop/UTS/Rocketry/Internship/control calcs" name="test" target="target.mlapps" target-name="Package App">
+    <param.appname>test</param.appname>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.icon />
+    <param.icons />
+    <param.summary />
+    <param.description />
+    <param.screenshot>/private/var/folders/2g/674vk6j94tb3s6lyl6g9yd0h0000gn/T/tp2f97e0f2_d5b8_4a57_a0e1_7987b04b9165.png</param.screenshot>
+    <param.version>1.0</param.version>
+    <param.products.name />
+    <param.products.id />
+    <param.products.version />
+    <param.platforms />
+    <param.output>/Users/lucas/Downloads</param.output>
+    <param.guid>4ab1c3d2-874e-4bc4-810b-b57651407722</param.guid>
+    <unset>
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.icon />
+      <param.icons />
+      <param.summary />
+      <param.description />
+      <param.version />
+      <param.products.name />
+      <param.products.id />
+      <param.products.version />
+      <param.platforms />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}/UI.mlapp</file>
+    </fileset.main>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}/PID_control_gains.m</file>
+      <file>${PROJECT_ROOT}/bin_data.m</file>
+      <file>${PROJECT_ROOT}/complementary_filter.m</file>
+      <file>${PROJECT_ROOT}/create_data.m</file>
+      <file>${PROJECT_ROOT}/get_leak_constant.m</file>
+    </fileset.depfun>
+    <fileset.resources />
+    <fileset.package />
+    <build-deliverables>
+      <file location="/Users/lucas" name="Downloads" optional="false">/Users/lucas/Downloads</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/Applications/MATLAB_R2024a.app</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>true</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>14.2</osver>
+      <os32>true</os32>
+      <os64>false</os64>
+      <arch>maci64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
