@@ -1,12 +1,15 @@
 #include "Controller.h"
 
-Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), Kp(1), Ki(0), Kd(0), logTime(100000)
+Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), Kp(1), Ki(0), Kd(0), logFreq(20)
 {
+    logTime = 1000000 / logFreq; // convert to microseconds
+
     control_pid.SetMode(AUTOMATIC);
     control_pid.SetOutputLimits(-100, 100); // 0-100% speed, sign indicates direction
 
     sdInitialised = sd.init(SD_CS);
-    initSensor(0.5);
+
+    initSensor(alpha);
 }
 
 Controller::~Controller()
@@ -18,8 +21,10 @@ Controller::~Controller()
     }
 }
 
-bool Controller::init(sim_data &data_)
+bool Controller::init(sim_data &data_, float alpha_)
 {
+    alpha = alpha_;
+
     // initialise gain schedules
     initGainSchedule();
 
@@ -125,8 +130,6 @@ bool Controller::startCalibrateSystem()
 
 bool Controller::LogDesiredData(String firstData, bool forceLog)
 {
-    timePassed = micros() - lastLogTime;
-
     if (forceLog)
     {
         String dataEntry = firstData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
@@ -135,6 +138,7 @@ bool Controller::LogDesiredData(String firstData, bool forceLog)
     }
     else
     {
+        timePassed = micros() - lastLogTime;
         if (timePassed >= logTime)
         {
             String dataEntry = firstData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
@@ -180,6 +184,7 @@ bool Controller::calibrateIterate()
             if (Input >= (pressureSensor.getBasePressure() - 50)) // take of a little bit of pressure to account for noise and drift
             {
                 stop();
+                calibrationProgress = 1;
                 calibrationRunning = false;
                 calibrating = false;
             }
@@ -197,7 +202,7 @@ bool Controller::calibrateIterate()
 
 void Controller::updateGains()
 {
-    // gain schedule array should be sorted from lowest to highest pressure
+    // gain schedule array should be sorted from lowest to highest operating pressure
     // for efficiency but also to ensure that the correct gains are selected
     if (!gainScheduleInitialised)
     {
@@ -247,6 +252,11 @@ bool Controller::updateReading()
     return true;
 }
 
+void Controller::setAlpha(float alpha_)
+{
+    alpha = alpha_;
+}
+
 bool Controller::iterate()
 {
     int i = 1; // first value seems to always be 0 for pressure which causes issues
@@ -272,12 +282,12 @@ bool Controller::iterate()
 
         Setpoint = float(data->pressure[i]);
 
-        i++;
-
+        updateGains();
         control_pid.Compute();
 
         pump.sendCommand(Output);
 
+        i++;
         return true;
     }
     else

@@ -1,7 +1,7 @@
 #ifndef DATATYPE_H
 #define DATATYPE_H
 
-static const int resolution = 2 * 320;
+static const int resolution = 8 * 320;
 
 struct sim_data
 {

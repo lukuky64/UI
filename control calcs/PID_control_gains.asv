@@ -12,7 +12,7 @@ function [Kp, Ki, Kd] = PID_control_gains(Qpump_at_P_0, Qleak_at_P_0, P_atm, P0,
     Qpump_actual = -abs(Qpump_actual);
 
     % Define transfer function parameters
-    A = k_leak;   %                   !!! Should this be negative or positive?
+    A = Qleak_at_P_0;   %                   !!! Should this be negative or positive?
     B = Qpump_actual; % Negative value
 
     A = A * scale_factor; % Scaled A
@@ -27,7 +27,7 @@ function [Kp, Ki, Kd] = PID_control_gains(Qpump_at_P_0, Qleak_at_P_0, P_atm, P0,
 
     % Tune the PID controller
 
-    C = pidtune(G, 'PID'); % !!! not using desired_bandwidth ATM
+    C = pidtune(G, 'PID', desired_bandwidth);
 
     % Assign gains to outputs
     Kp = C.Kp;

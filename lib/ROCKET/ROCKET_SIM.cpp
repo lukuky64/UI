@@ -9,9 +9,15 @@ ROCKET_SIM::ROCKET_SIM(float burnout_time, float apogee, float terminal_velocity
 
 sim_data &ROCKET_SIM::runSimulation()
 {
+    DBG("Initialised constants: " + String(this->burnout_time) + ", " + String(this->apogee) + ", " + String(this->terminal_velocity));
+
     float acceleration = compute_a_b(this->gravity, this->burnout_time, this->apogee);
 
+    DBG("Acceleration: " + String(acceleration));
+
     float time_apogee = abs((this->burnout_time * (acceleration - this->gravity)) / (-this->gravity));
+
+    DBG("Time to apogee: " + String(time_apogee));
 
     // time and distance from apogee to terminal velocity
     float time_a_t = abs(this->terminal_velocity / this->gravity);
@@ -21,6 +27,8 @@ sim_data &ROCKET_SIM::runSimulation()
     float time_t_l = abs(dist_t / terminal_velocity);
 
     float time_total = time_apogee + time_a_t + time_t_l;
+
+    DBG("Total time: " + String(time_total));
 
     if (time_total <= 0)
     {
@@ -96,7 +104,6 @@ float ROCKET_SIM::compute_a_b(double g, double t_b, double S_a)
     // Check if the sqrt argument is non-negative
     if (sqrt_argument < 0.0)
     {
-        // Handle the error as needed. Here, we print an error message and return NaN.
         // Serial.println("Error: Negative argument inside sqrt. Returning NaN.");
         return NAN; // Not a Number to indicate an error
     }

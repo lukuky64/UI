@@ -4,6 +4,15 @@
 #include "ROCKET_SIM.h"
 #include "Controller.h"
 
+struct sliderObj
+{
+    uint16_t yPos;
+    String text;
+    float sliderValue;
+    float minSliderValue;
+    float maxSliderValue;
+};
+
 class UI
 {
 public:
@@ -21,13 +30,17 @@ public:
     void runPage();
     void motorPage();
     void endPage();
+    void filteringPage();
 
-    void drawRectWithText(int16_t yPos, uint16_t colour, String text);
+    void showError(bool show);
+
+    void drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String text);
     void progressBar(String text, float progress, int16_t yPos);
 
     void drawSliders();
+    void drawSlider(sliderObj slider);
     void drawGraph(float apogee, float finishTime);
-    void handleSliderTouch();
+    void handleSliderTouch(sliderObj slider);
 
     bool checkButton(Adafruit_GFX_Button btn, bool down);
 
@@ -76,13 +89,10 @@ private:
     const int SLIDER_WIDTH = 280;
     const int SLIDER_HEIGHT = 60;
 
-    float slider1Value = 1000; // apogee
-    float minSlider1Value = 25;
-    float maxSlider1Value = 2000;
+    sliderObj sliderApogee = {250, "Apogee", 200, 25, 2000};
+    sliderObj sliderBurnTime = {320, "Burn time", 2, 0.05, 4};
 
-    float slider2Value = 1; // time
-    float minSlider2Value = 0.05;
-    float maxSlider2Value = 4;
+    sliderObj sliderFilter = {250, "Filter", 0.5, 0.1, 1};
 
     // Touch_getXY() updates global vars
     int16_t pixel_x;
@@ -98,6 +108,7 @@ private:
         POINT,
         RUN,
         MOTOR,
+        FILTERING,
         END
     };
 

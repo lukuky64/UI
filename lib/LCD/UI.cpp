@@ -52,6 +52,9 @@ void UI::command()
     case MOTOR:
         motorPage();
         break;
+    case FILTERING:
+        filteringPage();
+        break;
     case END:
         endPage();
         break;
@@ -148,12 +151,14 @@ void UI::startPage()
 
 void UI::settingsPage()
 {
-    Adafruit_GFX_Button back_btn, calibrate_btn;
+    Adafruit_GFX_Button back_btn, calibrate_btn, change_filter_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
     calibrate_btn.initButton(&tft, 160, 150, 200, 100, WHITE, WHITE, BLACK, (char *)"CALIBRATE", 3);
+    change_filter_btn.initButton(&tft, 160, 280, 200, 100, WHITE, WHITE, BLACK, (char *)"CHANGE FILTER", 3);
 
     back_btn.drawButton(false);
     calibrate_btn.drawButton(false);
+    change_filter_btn.drawButton(false);
 
     bool loop = true;
 
@@ -172,6 +177,12 @@ void UI::settingsPage()
             state = CALIBRATE;
             loop = false;
         }
+
+        if (checkButton(change_filter_btn, down))
+        {
+            state = FILTERING;
+            loop = false;
+        }
     }
 
     DBG("EXITING SETTINGS PAGE");
@@ -180,13 +191,17 @@ void UI::settingsPage()
     tft.fillScreen(BLACK);
 }
 
-void UI::drawRectWithText(int16_t yPos, uint16_t colour, String text)
+void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String text)
 {
-    tft.fillRect(0, yPos, SCREEN_WIDTH, 40, colour);
-    tft.setTextColor(BLACK);      // Set text color to white
-    tft.setTextSize(2);           // Set text size (adjust as needed)
-    tft.setCursor(10, yPos + 15); // Position the text (adjust x and y coordinates as needed)
-    tft.print(text);              // Display the text
+    width = constrain(width, 0, SCREEN_WIDTH); // Ensure width is within screen boundaries
+
+    int16_t xPos = (SCREEN_WIDTH - width) / 2;
+
+    tft.fillRect(xPos, yPos, width, 40, colour);
+    tft.setTextColor(BLACK);             // Set text color to white
+    tft.setTextSize(2);                  // Set text size (adjust as needed)
+    tft.setCursor(xPos + 10, yPos + 15); // Position the text (adjust x and y coordinates as needed)
+    tft.print(text);                     // Display the text
 }
 
 void UI::progressBar(String text, float progress, int16_t yPos)
@@ -213,9 +228,9 @@ void UI::calibrationPage()
     back_btn.drawButton(false);
     begin_btn.drawButton(false);
 
-    drawRectWithText(60, PURPLE_4, "1. Step input to 5km");
+    drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
 
-    drawRectWithText(105, PURPLE_4, "2. Leaking to 0km");
+    drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
 
     progressBar("", 0, 260);
 
@@ -272,11 +287,11 @@ void UI::calibrationPage()
 
                     if (progress < 0.5)
                     {
-                        drawRectWithText(60, PURPLE_3, "1. Step input to 5km");
+                        drawRectWithText(60, SCREEN_WIDTH, PURPLE_3, "1. Step input to 5km");
                     }
                     else
                     {
-                        drawRectWithText(105, PURPLE_3, "2. Leaking to 0km");
+                        drawRectWithText(105, SCREEN_WIDTH, PURPLE_3, "2. Leaking to 0km");
                     }
 
                     progressBar("Calibrating...", progress, 260);
@@ -285,6 +300,7 @@ void UI::calibrationPage()
             else
             {
                 DBG("Calibration not initialised");
+                showError(true);
             }
         }
     }
@@ -383,8 +399,10 @@ void UI::pointPage()
     save_btn.drawButton(false);
 
     // Draw initial graph and sliders
-    drawGraph(slider1Value, slider2Value);
-    drawSliders();
+    drawGraph(sliderApogee.sliderValue, sliderBurnTime.sliderValue);
+    drawSlider(sliderApogee);
+    drawSlider(sliderBurnTime);
+    // drawSliders();
 
     bool loop = true;
 
@@ -407,7 +425,9 @@ void UI::pointPage()
             loop = false;
         }
 
-        handleSliderTouch();
+        handleSliderTouch(sliderApogee);
+        handleSliderTouch(sliderBurnTime);
+        drawGraph(sliderApogee.sliderValue, sliderBurnTime.sliderValue);
     }
 
     DBG("EXITING POINT PAGE");
@@ -479,38 +499,37 @@ void UI::drawSliders()
 {
     // Draw slider 1 (apogee)
     tft.fillRect(20, 250, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
-    tft.fillRect(20, 250, mapFloat(slider1Value, 0, maxSlider1Value, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
-    tft.setCursor(50, 270);
+    tft.fillRect(20, 250, mapFloat(sliderApogee.sliderValue, 0, sliderApogee.maxSliderValue, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
+    tft.setCursor(50, 250 + 20);
     tft.print("Apogee");
 
     // Draw slider 2 (time)
     tft.fillRect(20, 320, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
-    tft.fillRect(20, 320, mapFloat(slider2Value, 0, maxSlider2Value, 5, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
-    tft.setCursor(50, 340);
+    tft.fillRect(20, 320, mapFloat(sliderBurnTime.sliderValue, 0, sliderBurnTime.maxSliderValue, 5, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
+    tft.setCursor(50, 320 + 20);
     tft.print("Burn Time");
 }
 
+void UI::drawSlider(sliderObj slider)
+{
+    slider.sliderValue = constrain(slider.sliderValue, slider.minSliderValue, slider.maxSliderValue);
+    tft.fillRect(20, slider.yPos, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
+    tft.fillRect(20, slider.yPos, mapFloat(slider.sliderValue, 0, slider.maxSliderValue, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
+    tft.setCursor(50, slider.yPos + 20);
+    tft.print(slider.text);
+}
+
 // Function to handle slider touch
-void UI::handleSliderTouch()
+void UI::handleSliderTouch(sliderObj slider)
 {
     if (Touch_getXY())
     {
         // Check if touch is within the bounds of slider 1
-        if (pixel_y > 250 && pixel_y < 250 + SLIDER_HEIGHT)
+        if (pixel_y > slider.yPos && pixel_y < slider.yPos + SLIDER_HEIGHT)
         {
-            slider1Value = mapFloat(pixel_x, 10, 10 + SLIDER_WIDTH, minSlider1Value, maxSlider1Value);
-            slider1Value = constrain(slider1Value, minSlider1Value, maxSlider1Value);
-            drawSliders(); // Update slider visual
+            slider.sliderValue = mapFloat(pixel_x, 10, 10 + SLIDER_WIDTH, slider.minSliderValue, slider.maxSliderValue);
+            drawSlider(slider);
         }
-
-        // Check if touch is within the bounds of slider 2
-        else if (pixel_y > 320 && pixel_y < 320 + SLIDER_HEIGHT)
-        {
-            slider2Value = mapFloat(pixel_x, 10, 10 + SLIDER_WIDTH, minSlider2Value, maxSlider2Value);
-            slider2Value = constrain(slider2Value, minSlider2Value, maxSlider2Value);
-            drawSliders(); // Update slider visual
-        }
-        drawGraph(slider1Value, slider2Value);
     }
 }
 
@@ -551,7 +570,7 @@ void UI::runPage()
             int prev_real_y = GRAPH_TOP + GRAPH_HEIGHT - 1;
             int prev_target_y = GRAPH_TOP + GRAPH_HEIGHT - 1;
 
-            bool initialisedController = controller.init(data); // will have a delay for calibrating the sensor
+            bool initialisedController = controller.init(data, sliderFilter.sliderValue); // will have a delay for calibrating the sensor
 
             DBG("Controller initialised: " + String(initialisedController));
 
@@ -571,7 +590,7 @@ void UI::runPage()
 
                     // Serial.println(elapsed_time);
 
-                    // loop time is about 550us or 1.8kHz
+                    // loop time is about 550us or 1.8KHz
 
                     float time = controller.getLatestTime();
 
@@ -620,8 +639,8 @@ void UI::runPage()
                     controller.stop();
 
                     // Reset sliders
-                    slider1Value = 1000;
-                    slider2Value = 1;
+                    sliderApogee.sliderValue = 1000;
+                    sliderBurnTime.sliderValue = 1;
                 }
             }
         }
@@ -638,6 +657,47 @@ void UI::runPage()
     tft.fillScreen(BLACK);
 
     GRAPH_HEIGHT /= 2;
+}
+
+// ************************ MOTOR ************************
+
+void UI::filteringPage()
+{
+    Adafruit_GFX_Button back_btn, change_filter_btn;
+    back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
+    change_filter_btn.initButton(&tft, 160, 150, 200, 100, WHITE, WHITE, BLACK, (char *)"SET", 3);
+
+    back_btn.drawButton(false);
+    change_filter_btn.drawButton(false);
+
+    drawSlider(sliderFilter);
+
+    bool loop = true;
+
+    while (loop)
+    {
+        bool down = Touch_getXY();
+
+        handleSliderTouch(sliderFilter);
+
+        if (checkButton(back_btn, down))
+        {
+            state = SETTINGS;
+            loop = false;
+        }
+
+        if (checkButton(change_filter_btn, down))
+        {
+            controller.setAlpha(sliderFilter.sliderValue);
+            state = SETTINGS;
+            loop = false;
+        }
+    }
+
+    DBG("EXITING FILTERING PAGE");
+
+    // clear page before going to the next
+    tft.fillScreen(BLACK);
 }
 
 // ************************ MOTOR ************************
@@ -675,3 +735,15 @@ void UI::endPage()
 }
 
 // ************************************************** PAGES **************************************************
+
+void UI::showError(bool show)
+{
+    if (show)
+    {
+        drawRectWithText(20, 100, RED, "ERROR");
+    }
+    else
+    {
+        drawRectWithText(20, 100, RED, "");
+    }
+}

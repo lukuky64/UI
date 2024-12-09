@@ -17,11 +17,15 @@ function [Qpumping, Qleaking, ln_dP_leak, P_atm] = create_data(filename)
     % dt_pumping = mean(diff(pumping_time));
     % 
     % Fs = 1/dt_pumping; % sampling frequnecy
-    % cutoff_frequnecy_Hz = 0.1;
+    % cutoff_frequnecy_Hz = 0.5;
     % 
     % data_pumping.pressure = lowpass(data_pumping.pressure, cutoff_frequnecy_Hz, Fs);
     % data_leaking.pressure = lowpass(data_leaking.pressure, cutoff_frequnecy_Hz, Fs);
 
+    % order = 3;
+    % framelen = 37;
+    % data_pumping.pressure = sgolayfilt(data_pumping.pressure,order,framelen);
+    % data_leaking.pressure = sgolayfilt(data_leaking.pressure,order,framelen);
 
 
 
@@ -77,22 +81,17 @@ function [Qpumping, Qleaking, ln_dP_leak, P_atm] = create_data(filename)
     
 
 
-pumping_time = data.time;
-dt_pumping = mean(diff(pumping_time));
-
-Fs = 1/dt_pumping; % sampling frequnecy
-cutoff_frequnecy_Hz = 1;
-
-
+% pumping_time = data.time;
+% dt_pumping = mean(diff(pumping_time));
+% 
+% Fs = 1/dt_pumping; % sampling frequnecy
+% cutoff_frequnecy_Hz = 1;
 
 
 order = 5;
 framelen = 19;
 Qleaking(:, 1) = sgolayfilt(Qleaking(:, 1),order,framelen);
 Qpumping(:, 1) = sgolayfilt(Qpumping(:, 1),order,framelen);
-
-
-
 
 
 % Qleaking(:, 1) = lowpass(Qleaking(:, 1),cutoff_frequnecy_Hz,Fs);

@@ -15,7 +15,7 @@ class Controller
 public:
     Controller();
     ~Controller();
-    bool init(sim_data &data_);
+    bool init(sim_data &data_, float alpha_);
     bool run();
     void stop();
     bool iterate();
@@ -32,6 +32,7 @@ public:
     float getCalibrationProgress();
     void updateGains();
     bool initGainSchedule();
+    void setAlpha(float alpha_);
 
 private:
     Pump pump;
@@ -84,6 +85,7 @@ private:
     unsigned long timePassed;  // microseconds
     unsigned long lastLogTime; // microseconds
     unsigned long logTime;     // microseconds
+    unsigned long logFreq;     // microseconds
 };
 
 #endif // CONTROLLER_H
