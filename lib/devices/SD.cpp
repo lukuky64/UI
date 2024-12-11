@@ -24,6 +24,7 @@ bool Sd::createFile(String StartMsg, String prefix)
         dataFile.println(StartMsg);
         dataFile.flush();
         isFileOpen = true;
+        success = true;
     }
     else
     {

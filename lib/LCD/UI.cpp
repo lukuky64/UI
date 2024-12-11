@@ -80,7 +80,7 @@ bool UI::Touch_getXY()
     return pressed;
 }
 
-bool UI::checkButton(Adafruit_GFX_Button btn, bool down)
+bool UI::checkButton(Adafruit_GFX_Button &btn, bool down)
 {
     bool isPressed = down && btn.contains(pixel_x, pixel_y);
     btn.press(isPressed);
@@ -95,6 +95,7 @@ bool UI::checkButton(Adafruit_GFX_Button btn, bool down)
     if (justPressed)
     {
         btn.drawButton(true);
+        delay(touch_delay);
     }
 
     return justPressed;
@@ -154,7 +155,7 @@ void UI::settingsPage()
     Adafruit_GFX_Button back_btn, calibrate_btn, change_filter_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
     calibrate_btn.initButton(&tft, 160, 150, 200, 100, WHITE, WHITE, BLACK, (char *)"CALIBRATE", 3);
-    change_filter_btn.initButton(&tft, 160, 280, 200, 100, WHITE, WHITE, BLACK, (char *)"CHANGE FILTER", 3);
+    change_filter_btn.initButton(&tft, 160, 280, 200, 100, WHITE, WHITE, BLACK, (char *)"FILTER", 3);
 
     back_btn.drawButton(false);
     calibrate_btn.drawButton(false);
@@ -168,6 +169,7 @@ void UI::settingsPage()
 
         if (checkButton(back_btn, down))
         {
+
             state = START;
             loop = false;
         }
@@ -198,10 +200,15 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     int16_t xPos = (SCREEN_WIDTH - width) / 2;
 
     tft.fillRect(xPos, yPos, width, 40, colour);
-    tft.setTextColor(BLACK);             // Set text color to white
-    tft.setTextSize(2);                  // Set text size (adjust as needed)
-    tft.setCursor(xPos + 10, yPos + 15); // Position the text (adjust x and y coordinates as needed)
-    tft.print(text);                     // Display the text
+    tft.setTextColor(BLACK); // Set text color to white
+    tft.setTextSize(2);      // Set text size (adjust as needed).
+
+    uint8_t fontSize = 2;
+    uint16_t textWidth = text.length() * 6 * fontSize; // font 1 = 6x8
+    uint16_t fontXPos = (width - textWidth) / 2;
+
+    tft.setCursor(xPos + fontXPos, yPos + 15); // Position the text (adjust x and y coordinates as needed)
+    tft.print(text);                           // Display the text
 }
 
 void UI::progressBar(String text, float progress, int16_t yPos)
@@ -229,7 +236,6 @@ void UI::calibrationPage()
     begin_btn.drawButton(false);
 
     drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
-
     drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
 
     progressBar("", 0, 260);
@@ -243,21 +249,22 @@ void UI::calibrationPage()
         if (checkButton(back_btn, down))
         {
             state = SETTINGS;
+
             loop = false;
         }
 
-        if (checkButton(begin_btn, down))
+        bool eStop = false;
+
+        if (checkButton(begin_btn, down) && !eStop)
         {
             float pressureSetPoint = ROCKET_SIM::altitudeToPressure(3000);                // 3km setpoint
             bool calibrateInitialised = controller.initCalibrateSystem(pressureSetPoint); // setpoint for calibration
 
-            stop_btn.drawButton(false);
+            stop_btn.drawButton(true);
 
             if (calibrateInitialised)
             {
                 DBG("Calibration initialised");
-
-                stop_btn.drawButton(true);
 
                 // tft.fillRect(40, 80, 160, 80, GREEN);
 
@@ -266,20 +273,32 @@ void UI::calibrationPage()
                 // 5 second delay to get some atmospheric data
                 for (int i = 0; i <= 100; i++)
                 {
-                    controller.calibrateIterate();
-                    progressBar("Loading...", i / 100.0, 260);
-                    delay(30);
+                    if (controller.calibrateIterate())
+                    {
+                        progressBar("Loading...", i / 100.0, 260);
+                        delay(30);
+                    }
+                    else
+                    {
+                        calibrateInitialised = false;
+                        break;
+                    }
                 }
+
+                stop_btn.drawButton(false);
 
                 // main calibration loop
                 while (controller.calibrateIterate())
                 {
                     down = Touch_getXY();
-                    stop_btn.press(down && begin_btn.contains(pixel_x, pixel_y));
 
                     if (checkButton(stop_btn, down))
                     {
                         controller.stop();
+                        loop = false;
+                        eStop = true;
+                        calibrateInitialised = false;
+
                         break;
                     }
 
@@ -335,6 +354,7 @@ void UI::createPage()
         if (checkButton(back_btn, down))
         {
             state = START;
+
             loop = false;
         }
 
@@ -377,6 +397,7 @@ void UI::uploadPage()
         if (checkButton(back_btn, down))
         {
             state = START;
+
             loop = false;
         }
     }
@@ -413,21 +434,26 @@ void UI::pointPage()
         if (checkButton(back_btn, down))
         {
             state = CREATE;
+
             loop = false;
         }
 
         if (checkButton(save_btn, down))
         {
-            save_btn.drawButton(true);
             // tft.fillRect(40, 80, 160, 80, GREEN);
 
             state = RUN;
             loop = false;
         }
 
-        handleSliderTouch(sliderApogee);
-        handleSliderTouch(sliderBurnTime);
-        drawGraph(sliderApogee.sliderValue, sliderBurnTime.sliderValue);
+        bool slider1Touched = handleSliderTouch(sliderApogee, down);
+        bool slider2Touched = handleSliderTouch(sliderBurnTime, down);
+
+        if (slider1Touched || slider2Touched)
+        {
+            DBG("Slider touched");
+            drawGraph(sliderApogee.sliderValue, sliderBurnTime.sliderValue);
+        }
     }
 
     DBG("EXITING POINT PAGE");
@@ -494,43 +520,34 @@ void UI::updateTextBox(String text)
     tft.print(text);
 }
 
-// Function to draw sliders on the screen
-void UI::drawSliders()
-{
-    // Draw slider 1 (apogee)
-    tft.fillRect(20, 250, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
-    tft.fillRect(20, 250, mapFloat(sliderApogee.sliderValue, 0, sliderApogee.maxSliderValue, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
-    tft.setCursor(50, 250 + 20);
-    tft.print("Apogee");
-
-    // Draw slider 2 (time)
-    tft.fillRect(20, 320, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
-    tft.fillRect(20, 320, mapFloat(sliderBurnTime.sliderValue, 0, sliderBurnTime.maxSliderValue, 5, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
-    tft.setCursor(50, 320 + 20);
-    tft.print("Burn Time");
-}
-
-void UI::drawSlider(sliderObj slider)
+void UI::drawSlider(sliderObj &slider)
 {
     slider.sliderValue = constrain(slider.sliderValue, slider.minSliderValue, slider.maxSliderValue);
     tft.fillRect(20, slider.yPos, SLIDER_WIDTH, SLIDER_HEIGHT, WHITE);
     tft.fillRect(20, slider.yPos, mapFloat(slider.sliderValue, 0, slider.maxSliderValue, 25, SLIDER_WIDTH), SLIDER_HEIGHT, ORANGE);
+    tft.setTextSize(2);
     tft.setCursor(50, slider.yPos + 20);
     tft.print(slider.text);
 }
 
 // Function to handle slider touch
-void UI::handleSliderTouch(sliderObj slider)
+bool UI::handleSliderTouch(sliderObj &slider, bool down)
 {
-    if (Touch_getXY())
+    if (down)
     {
         // Check if touch is within the bounds of slider 1
         if (pixel_y > slider.yPos && pixel_y < slider.yPos + SLIDER_HEIGHT)
         {
             slider.sliderValue = mapFloat(pixel_x, 10, 10 + SLIDER_WIDTH, slider.minSliderValue, slider.maxSliderValue);
             drawSlider(slider);
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
+    return false;
 }
 
 // ************************ RUN ************************
@@ -559,7 +576,6 @@ void UI::runPage()
 
         if (checkButton(start_btn, down))
         {
-            stop_btn.drawButton(false);
 
             int prev_x = 0;
 
@@ -572,82 +588,91 @@ void UI::runPage()
 
             bool initialisedController = controller.init(data, sliderFilter.sliderValue); // will have a delay for calibrating the sensor
 
-            DBG("Controller initialised: " + String(initialisedController));
-
-            bool run = controller.run();
-
-            // uint32_t prev_time = micros();
-
-            while (run)
+            if (initialisedController)
             {
-                // RUN SIMULATION
-                bool iterated = controller.iterate();
+                DBG("Controller initialised: " + String(initialisedController));
 
-                if (iterated)
+                bool run = controller.run();
+
+                // uint32_t prev_time = micros();
+
+                while (run)
                 {
-                    // uint32_t current_time = micros();
-                    // uint32_t elapsed_time = current_time - prev_time;
+                    // RUN SIMULATION
+                    bool iterated = controller.iterate();
 
-                    // Serial.println(elapsed_time);
+                    if (iterated)
+                    {
+                        // uint32_t current_time = micros();
+                        // uint32_t elapsed_time = current_time - prev_time;
 
-                    // loop time is about 550us or 1.8KHz
+                        // Serial.println(elapsed_time);
 
-                    float time = controller.getLatestTime();
+                        // loop time is about 550us or 1.8KHz
 
-                    float real_pressure = controller.getLatestPressure();
-                    float target_pressure = controller.getLatestSetpoint();
+                        float time = controller.getLatestTime();
 
-                    // DBG(real_pressure);
+                        float real_pressure = controller.getLatestPressure();
+                        float target_pressure = controller.getLatestSetpoint();
 
-                    float real_y = ROCKET_SIM::pressureToAltitude(real_pressure);     // convert to altitude
-                    float target_y = ROCKET_SIM::pressureToAltitude(target_pressure); // convert to altitude
+                        // DBG(real_pressure);
 
-                    // DBG(real_y);
+                        float real_y = ROCKET_SIM::pressureToAltitude(real_pressure);     // convert to altitude
+                        float target_y = ROCKET_SIM::pressureToAltitude(target_pressure); // convert to altitude
 
-                    real_y = GRAPH_TOP + GRAPH_HEIGHT - 1 - int(real_y * y_scale);
-                    target_y = GRAPH_TOP + GRAPH_HEIGHT - 1 - int(target_y * y_scale);
+                        // DBG(real_y);
 
-                    int x = constrain(int(time * x_scale), 0, SCREEN_WIDTH - 1);
+                        real_y = GRAPH_TOP + GRAPH_HEIGHT - 1 - int(real_y * y_scale);
+                        target_y = GRAPH_TOP + GRAPH_HEIGHT - 1 - int(target_y * y_scale);
 
-                    real_y = constrain(real_y, GRAPH_TOP, GRAPH_TOP + GRAPH_HEIGHT - 1);
-                    target_y = constrain(target_y, GRAPH_TOP, GRAPH_TOP + GRAPH_HEIGHT - 1);
+                        int x = constrain(int(time * x_scale), 0, SCREEN_WIDTH - 1);
 
-                    // update graph with live data
-                    tft.drawLine(prev_x, prev_real_y, x, real_y, WHITE);   // draw line for real_y
-                    tft.drawLine(prev_x, prev_target_y, x, target_y, RED); // draw line for target_y
+                        real_y = constrain(real_y, GRAPH_TOP, GRAPH_TOP + GRAPH_HEIGHT - 1);
+                        target_y = constrain(target_y, GRAPH_TOP, GRAPH_TOP + GRAPH_HEIGHT - 1);
 
-                    prev_x = x;
-                    prev_real_y = real_y;
-                    prev_target_y = target_y;
+                        // update graph with live data
+                        tft.drawLine(prev_x, prev_real_y, x, real_y, WHITE);   // draw line for real_y
+                        tft.drawLine(prev_x, prev_target_y, x, target_y, RED); // draw line for target_y
 
-                    // prev_time = current_time;
+                        prev_x = x;
+                        prev_real_y = real_y;
+                        prev_target_y = target_y;
+
+                        // prev_time = current_time;
+                    }
+                    else
+                    {
+                        run = false;
+                    }
+
+                    // Check if the stop button is pressed
+                    bool down = Touch_getXY();
+
+                    if (checkButton(stop_btn, down))
+                    {
+                        state = START;
+                        loop = false;
+                        run = false;
+
+                        controller.stop();
+
+                        // Reset sliders
+                        sliderApogee.sliderValue = 1000;
+                        sliderBurnTime.sliderValue = 1;
+                    }
                 }
-                else
-                {
-                    run = false;
-                }
-
-                // Check if the stop button is pressed
-                bool down = Touch_getXY();
-
-                if (checkButton(stop_btn, down))
-                {
-                    state = START;
-                    loop = false;
-                    run = false;
-
-                    controller.stop();
-
-                    // Reset sliders
-                    sliderApogee.sliderValue = 1000;
-                    sliderBurnTime.sliderValue = 1;
-                }
+            }
+            else
+            {
+                DBG("Controller not initialised");
+                showError(true);
             }
         }
 
         if (checkButton(back_btn, down))
         {
             state = START;
+
             loop = false;
         }
     }
@@ -670,6 +695,7 @@ void UI::filteringPage()
     back_btn.drawButton(false);
     change_filter_btn.drawButton(false);
 
+    sliderFilter.sliderValue = controller.getAlpha();
     drawSlider(sliderFilter);
 
     bool loop = true;
@@ -678,11 +704,12 @@ void UI::filteringPage()
     {
         bool down = Touch_getXY();
 
-        handleSliderTouch(sliderFilter);
+        handleSliderTouch(sliderFilter, down);
 
         if (checkButton(back_btn, down))
         {
             state = SETTINGS;
+
             loop = false;
         }
 
@@ -718,6 +745,7 @@ void UI::motorPage()
         {
             back_btn.drawButton(true);
             state = CREATE;
+
             loop = false;
         }
     }
@@ -740,10 +768,10 @@ void UI::showError(bool show)
 {
     if (show)
     {
-        drawRectWithText(20, 100, RED, "ERROR");
+        drawRectWithText(0, 100, RED, "ERROR");
     }
     else
     {
-        drawRectWithText(20, 100, RED, "");
+        drawRectWithText(0, 100, RED, "");
     }
 }

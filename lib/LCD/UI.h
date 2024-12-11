@@ -37,12 +37,11 @@ public:
     void drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String text);
     void progressBar(String text, float progress, int16_t yPos);
 
-    void drawSliders();
-    void drawSlider(sliderObj slider);
+    void drawSlider(sliderObj &slider);
     void drawGraph(float apogee, float finishTime);
-    void handleSliderTouch(sliderObj slider);
+    bool handleSliderTouch(sliderObj &slider, bool down);
 
-    bool checkButton(Adafruit_GFX_Button btn, bool down);
+    bool checkButton(Adafruit_GFX_Button &btn, bool down);
 
 private:
     float mapFloat(float x, float in_min, float in_max, float out_min, float out_max);
@@ -54,6 +53,8 @@ private:
 
     const int MINPRESSURE = 200;
     const int MAXPRESSURE = 1000;
+
+    const int touch_delay = 100;
 
     // 320x480 ID=0x6814
     const int XP = 7;
@@ -92,7 +93,7 @@ private:
     sliderObj sliderApogee = {250, "Apogee", 200, 25, 2000};
     sliderObj sliderBurnTime = {320, "Burn time", 2, 0.05, 4};
 
-    sliderObj sliderFilter = {250, "Filter", 0.5, 0.1, 1};
+    sliderObj sliderFilter = {250, "Alpha", 0.5, 0, 0.95};
 
     // Touch_getXY() updates global vars
     int16_t pixel_x;

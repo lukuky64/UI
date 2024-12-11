@@ -9,15 +9,15 @@ ROCKET_SIM::ROCKET_SIM(float burnout_time, float apogee, float terminal_velocity
 
 sim_data &ROCKET_SIM::runSimulation()
 {
-    DBG("Initialised constants: " + String(this->burnout_time) + ", " + String(this->apogee) + ", " + String(this->terminal_velocity));
+    // DBG("Initialised constants: " + String(this->burnout_time) + ", " + String(this->apogee) + ", " + String(this->terminal_velocity));
 
     float acceleration = compute_a_b(this->gravity, this->burnout_time, this->apogee);
 
-    DBG("Acceleration: " + String(acceleration));
+    // DBG("Acceleration: " + String(acceleration));
 
     float time_apogee = abs((this->burnout_time * (acceleration - this->gravity)) / (-this->gravity));
 
-    DBG("Time to apogee: " + String(time_apogee));
+    // DBG("Time to apogee: " + String(time_apogee));
 
     // time and distance from apogee to terminal velocity
     float time_a_t = abs(this->terminal_velocity / this->gravity);
@@ -28,16 +28,19 @@ sim_data &ROCKET_SIM::runSimulation()
 
     float time_total = time_apogee + time_a_t + time_t_l;
 
-    DBG("Total time: " + String(time_total));
+    // DBG("Total time: " + String(time_total));
 
     if (time_total <= 0)
     {
         return this->data;
     }
 
-    this->data.velocity[0] = 0.0f;
-    this->data.altitude[0] = 0.0f;
-    this->data.time[0] = 0.0f;
+    for (int i = 0; i < resolution; i++)
+    {
+        this->data.altitude[i] = 0.0f;
+        this->data.velocity[i] = 0.0f;
+        this->data.pressure[i] = 0.0f;
+    }
 
     float prev_t = 0.0;
     float dt = 0;
@@ -82,11 +85,15 @@ sim_data &ROCKET_SIM::runSimulation()
     }
 
     // Find the maximum altitude and its index
-    float *max_ptr = std::max_element(this->data.altitude, this->data.altitude + resolution);
-    int max_index = max_ptr - this->data.altitude;
+    float *max_ptr = std::max_element(this->data.altitude, this->data.altitude + this->data.num_points);
+    int max_index = static_cast<int>(max_ptr - this->data.altitude);
+
+    // DBG("Max index: " + String(max_index));
 
     // Retrieve the maximum altitude and corresponding time
     this->data.apogee = this->data.altitude[max_index];
+
+    // DBG("Apogee: " + String(this->data.apogee) + "m");
 
     this->data.time_at_apogee = this->data.time[max_index];
 

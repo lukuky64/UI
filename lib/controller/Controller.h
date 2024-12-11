@@ -33,6 +33,7 @@ public:
     void updateGains();
     bool initGainSchedule();
     void setAlpha(float alpha_);
+    float getAlpha();
 
 private:
     Pump pump;

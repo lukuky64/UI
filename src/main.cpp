@@ -2,15 +2,19 @@
 #include <Arduino.h>
 #include "Debug.hpp"
 
-UI ui;
+UI *ui;
 
 void setup(void)
 {
     INITIALISE_DBG(115200);
-    ui.begin();
+    delay(500);
+
+    ui = new UI();
+    ui->begin();
 }
 
 void loop(void)
 {
-    ui.command();
+    // DBG("test");
+    ui->command();
 }

@@ -23,7 +23,7 @@ Controller::~Controller()
 
 bool Controller::init(sim_data &data_, float alpha_)
 {
-    alpha = alpha_;
+    setAlpha(alpha_);
 
     // initialise gain schedules
     initGainSchedule();
@@ -31,7 +31,7 @@ bool Controller::init(sim_data &data_, float alpha_)
     data = &data_;
     dataInitialised = true;
 
-    return dataInitialised && sensorInitialised;
+    return dataInitialised && sensorInitialised && gainScheduleInitialised;
 }
 
 bool Controller::initGainSchedule()
@@ -64,7 +64,7 @@ bool Controller::initSensor(float alpha_)
     if (!sensorInitialised)
     {
         filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
-        alpha = alpha_;
+        setAlpha(alpha_);
         sensorInitialised = pressureSensor.begin(I2C_SDA, I2C_SCL, 0x76); // initialise BMP280 sensor
     }
 
@@ -103,6 +103,8 @@ bool Controller::initCalibrateSystem(float setPointPressure)
     calibrationState = ground; // set initial state
 
     bool fileCreated = sd.createFile("state, time, pressure", "cal");
+
+    DBG("sensor: " + String(sensorInitialised) + " sd: " + String(sdInitialised) + " file: " + String(fileCreated));
 
     initialised = sensorInitialised && sdInitialised && fileCreated;
 
@@ -146,7 +148,7 @@ bool Controller::LogDesiredData(String firstData, bool forceLog)
             return sd.writeToBuffer(dataEntry);
         }
     }
-    return false;
+    return true; // will only return false if failed to write to buffer
 }
 
 bool Controller::calibrateIterate()
@@ -155,7 +157,7 @@ bool Controller::calibrateIterate()
 
     if (calibrationRunning && updateReading())
     {
-        updateGains();
+        // updateGains();
 
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
@@ -246,7 +248,7 @@ bool Controller::updateReading()
         return false;
     }
 
-    filteredReading = alpha * rawReading + (1 - alpha) * filteredReading;
+    filteredReading = (1 - alpha) * rawReading + alpha * filteredReading;
     Input = filteredReading;
 
     return true;
@@ -254,7 +256,14 @@ bool Controller::updateReading()
 
 void Controller::setAlpha(float alpha_)
 {
+    // can't be be 1 because reading will never change
+    constrain(alpha_, 0, 0.95);
     alpha = alpha_;
+}
+
+float Controller::getAlpha()
+{
+    return alpha;
 }
 
 bool Controller::iterate()

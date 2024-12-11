@@ -6,8 +6,8 @@ close all; clear; clc;
 % Define constants
 % ---------------------------
 gravity = -9.81;             % m/s²
-burnout_time = 0.5;           % Example burnout time in seconds
-apogee = 1000;               % Example desired apogee in metres
+burnout_time = 1.4;           % Example burnout time in seconds
+apogee = 1414.55;               % Example desired apogee in metres
 terminal_velocity = -8;     % Example terminal velocity in m/s
 resolution = 320 * 50;          % Number of data points
 
