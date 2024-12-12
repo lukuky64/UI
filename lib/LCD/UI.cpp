@@ -50,9 +50,6 @@ void UI::command()
     case FILTERING:
         filteringPage();
         break;
-    case END:
-        endPage();
-        break;
     default:
         startPage();
         break;
@@ -120,7 +117,7 @@ void UI::startPage()
     {
         if (!devicesStatus)
         {
-            showError(true, "devices not found");
+            showError(true, "Devices not found");
 
             if (controller.initDevices())
             {
@@ -302,17 +299,18 @@ void UI::calibrationPage()
             {
                 DBG("Calibration initialised");
 
-                // tft.fillRect(40, 80, 160, 80, GREEN);
-
                 controller.startCalibrateSystem();
 
-                // 5 second delay to get some atmospheric data
-                for (int i = 0; i <= 100; i++)
+                // delay to get some atmospheric data
+
+                uint8_t numIterations = 50;
+
+                for (int i = 1; i <= numIterations; i++)
                 {
                     if (controller.calibrateIterate())
                     {
-                        progressBar("Loading...", i / 100.0, 260);
-                        delay(30);
+                        progressBar("Loading...", i / numIterations, 260);
+                        delay(20);
                     }
                     else
                     {
@@ -355,7 +353,7 @@ void UI::calibrationPage()
             else
             {
                 DBG("Calibration not initialised");
-                showError(true, "Calib not init");
+                showError(true, "Calibration not init");
             }
         }
     }
@@ -380,7 +378,9 @@ void UI::createPage()
 
     back_btn.drawButton(false);
     point_btn.drawButton(false);
-    motor_btn.drawButton(false);
+
+    // disabling this page for now
+    motor_btn.drawButton(true);
 
     bool loop = true;
     while (loop)
@@ -402,12 +402,8 @@ void UI::createPage()
         }
         if (checkButton(motor_btn, down))
         {
-            // tft.fillRect(40, 80, 160, 80, RED);
-
-            // disabling this function for now
-
-            // state = MOTOR;
-            // loop = false;
+            state = MOTOR;
+            loop = false;
         }
     }
     DBG("EXITING CREATE PAGE");
@@ -498,9 +494,6 @@ void UI::pointPage()
 
 void UI::drawGraph(float apogee, float burnout_time)
 {
-    // DBG("set apogee: " + String(apogee));
-    // DBG("set burnout_time: " + String(burnout_time));
-
     // Clear the previous graph area
     tft.fillRect(0, GRAPH_TOP, SCREEN_WIDTH, GRAPH_HEIGHT, BLACK);
 
@@ -702,7 +695,7 @@ void UI::runPage()
             else
             {
                 DBG("Controller not initialised");
-                showError(true, "Controller not init");
+                showError(true, "Controller cannot init");
             }
         }
 
@@ -794,13 +787,6 @@ void UI::motorPage()
     DBG("EXITING MOTOR PAGE");
     // clear page before going to the next
     tft.fillScreen(BLACK);
-}
-
-// ************************ END ************************
-
-void UI::endPage()
-{
-    //
 }
 
 // ************************************************** PAGES **************************************************

@@ -107,8 +107,7 @@ private:
         POINT,
         RUN,
         MOTOR,
-        FILTERING,
-        END
+        FILTERING
     };
 
     pageState state;

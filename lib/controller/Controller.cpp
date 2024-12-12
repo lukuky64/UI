@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include <algorithm>
 
 Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), Kp(1), Ki(0), Kd(0), alpha(0.5), logFreq(20)
 {
@@ -123,11 +124,13 @@ bool Controller::startCalibrateSystem()
         {
             calibrationRunning = true;
             startMillis = millis();
+            currentSeconds = 0;
         }
 
         if (!LogDesiredData(String(calibrationState), true))
         {
             DBG("Failed to log data to SD");
+
             calibrationRunning = false;
         }
     }
@@ -185,9 +188,9 @@ bool Controller::calibrateIterate()
         }
         else if (calibrationState == leaking)
         {
-            calibrationProgress = 0.5 * (1 + ((Input - calibrationSetPointPressure) / (pressureSensor.getBasePressure() - calibrationSetPointPressure)));
+            calibrationProgress = 0.5 * (1 + max(0.0, ((Input - calibrationSetPointPressure) / (pressureSensor.getBasePressure() - calibrationSetPointPressure))));
 
-            if (Input >= (pressureSensor.getBasePressure() - 50)) // take of a little bit of pressure to account for noise and drift
+            if (Input >= (pressureSensor.getBasePressure() - 100)) // take of a little bit of pressure to account for noise and drift
             {
                 stop();
                 calibrationProgress = 1;
