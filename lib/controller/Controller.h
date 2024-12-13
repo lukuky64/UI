@@ -31,7 +31,7 @@ public:
     bool updateReading();
     bool initSensor(float alpha_ = 0.5);
     float getCalibrationProgress();
-    void updateGains();
+    bool updateGains();
     bool initGainSchedule();
     void setAlpha(float alpha_);
     float getAlpha();
@@ -46,9 +46,9 @@ private:
 
     // PID control
     double Setpoint, Input, Output;
-    double Kp;
-    double Ki;
-    double Kd;
+    double Kp = -0.01;
+    double Ki = 0;
+    double Kd = 0;
 
     gainScheduleData gainSchedule;
 

@@ -4,7 +4,7 @@
 #include "Arduino.h"
 #include "Debug.hpp"
 
-struct PumpData
+struct PumpCommand
 {
     uint8_t speed;
     uint8_t direction;
@@ -14,14 +14,14 @@ class Pump
 {
 public:
     Pump();
-    void sendCommand(int8_t speed);
-    PumpData getCommand();
+    void sendCommand(double speed);
+    PumpCommand getCommand();
 
 private:
     int maxSpeed;
     int minSpeed;
 
-    PumpData command;
+    PumpCommand command;
 
     int pwmPin;
     int dirPin;

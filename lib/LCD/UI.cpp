@@ -605,10 +605,9 @@ void UI::runPage()
 
         if (checkButton(start_btn, down))
         {
-
             int prev_x = 0;
 
-            float maxVal = data.apogee * 1.1; // 10% more than max incase of overshoot
+            float maxVal = data.apogee * 1.1; // 10% more than max incase we overshoot
 
             float y_scale = float(GRAPH_HEIGHT - 1) / maxVal; // Scale y-axis based on max
             float x_scale = float(SCREEN_WIDTH - 1) / data.time[data.num_points - 1];
@@ -620,11 +619,9 @@ void UI::runPage()
 
             if (initialisedController)
             {
-                DBG("Controller initialised: " + String(initialisedController));
+                DBG("Controller initialised");
 
                 bool run = controller.run();
-
-                // uint32_t prev_time = micros();
 
                 while (run)
                 {
@@ -633,11 +630,6 @@ void UI::runPage()
 
                     if (iterated)
                     {
-                        // uint32_t current_time = micros();
-                        // uint32_t elapsed_time = current_time - prev_time;
-
-                        // Serial.println(elapsed_time);
-
                         // loop time is about 550us or 1.8KHz
 
                         float time = controller.getLatestTime();
@@ -667,8 +659,6 @@ void UI::runPage()
                         prev_x = x;
                         prev_real_y = real_y;
                         prev_target_y = target_y;
-
-                        // prev_time = current_time;
                     }
                     else
                     {

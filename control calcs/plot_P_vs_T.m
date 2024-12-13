@@ -1,11 +1,10 @@
 % Read the data from CSV
 
-filename = 'cal_11_12_1.csv';
-
-% filename = 'CAL_30.csv';
-%filename = 'vacuum_chamber_dynamics.csv';
+filename2 = 'cal_11_12_1.csv';
+filename1 = 'CAL_30.csv';
  
-data = readtable(filename);
+data1 = readtable(filename1);
+data2 = readtable(filename2);
 %  
 % Separate data by states
 % data_initial = data(data.state == 0, :);
@@ -23,16 +22,31 @@ data = readtable(filename);
 % data_leaking = data_leaking((totalRowsLeak - rowsToTakeLeak):totalRowsLeak, :);
 
 
-pressure = data.pressure;
-time = data.time;
+pressure1 = data1.pressure;
+time1 = data1.time;
+
+pressure2 = data2.pressure;
+time2 = data2.time;
 
 figure;
-plot(time, pressure, '.-');
 
+subplot(3, 1, 1);
+plot(time1, pressure1, '.-', Color='red');
+title(filename1)
+
+subplot(3, 1, 2);
+plot(time2, pressure2, '.-', Color='blue');
+title(filename2)
+
+subplot(3, 1, 3);
+plot(time1, pressure1, '.-', Color='red');
+hold on;
+plot(time2, pressure2, '.-', Color='blue');
+hold off;
 
 
 % Run the create_data function
-[Qpumping, Qleaking, ln_dP_leak, P_atm] = create_data(filename);
+[Qpumping, Qleaking, ln_dP_leak, P_atm] = create_data(filename1);
 
 
 

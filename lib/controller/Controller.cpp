@@ -1,7 +1,7 @@
 #include "Controller.h"
 #include <algorithm>
 
-Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), Kp(1), Ki(0), Kd(0), alpha(0.5), logFreq(20)
+Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), alpha(0.5), logFreq(20)
 {
     logTime = 1000000 / logFreq; // convert to microseconds
 
@@ -164,15 +164,13 @@ bool Controller::calibrateIterate()
 
     if (calibrationRunning && updateReading())
     {
-        // updateGains();
-
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
         if (calibrationState == ground)
         {
             if (currentSeconds >= 5)
             {
-                pump.sendCommand(100); // pump max speed
+                pump.sendCommand(100.0); // pump max speed
                 calibrationState = pumping;
             }
         }
@@ -182,7 +180,7 @@ bool Controller::calibrateIterate()
 
             if (Input <= calibrationSetPointPressure)
             {
-                pump.sendCommand(0);
+                pump.sendCommand(0.0);
                 calibrationState = leaking;
             }
         }
@@ -209,14 +207,14 @@ bool Controller::calibrateIterate()
     return calibrating;
 }
 
-void Controller::updateGains()
+bool Controller::updateGains()
 {
     // gain schedule array should be sorted from lowest to highest operating pressure
     // for efficiency but also to ensure that the correct gains are selected
     if (!gainScheduleInitialised)
     {
         DBG("Gain schedule not initialised");
-        return;
+        return false;
     }
 
     for (int i = 0; i < gainSchedule.height; i++)
@@ -231,13 +229,15 @@ void Controller::updateGains()
             break;
         }
     }
+
+    return true;
 }
 
 void Controller::stop()
 {
     calibrationRunning = false;
     running = false;
-    pump.sendCommand(0);
+    pump.sendCommand(0.0);
 }
 
 float Controller::getCalibrationProgress()
@@ -285,24 +285,28 @@ bool Controller::iterate()
         // find closest time in data
         for (i; i < data->num_points; i++)
         {
-            if (data->time[i] >= currentSeconds)
-            {
-                break;
-            }
-            if (i == data->num_points - 1)
+            if (i > (data->num_points - 1))
             {
                 running = false;
+                break;
+            }
+
+            if (data->time[i] >= currentSeconds)
+            {
+                i++;
+                break;
             }
         }
 
         Setpoint = float(data->pressure[i]);
 
-        updateGains();
+        running = updateGains();
         control_pid.Compute();
+
+        DBG("Setpoint: " + String(Setpoint) + " Input: " + String(Input) + " Output: " + String(Output));
 
         pump.sendCommand(Output);
 
-        i++;
         return true;
     }
     else
