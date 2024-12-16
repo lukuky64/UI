@@ -66,23 +66,28 @@ bool Controller::initGainSchedule()
 
 bool Controller::initSensor(float alpha_)
 {
-    if (!sensorInitialised)
+    if (sensorInitialised)
     {
-        filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
-        setAlpha(alpha_);
-        sensorInitialised = pressureSensor.begin(I2C_SDA, I2C_SCL, 0x76); // initialise BMP280 sensor
+        DBG("Testing sensor connection");
+        sensorInitialised = pressureSensor.testConnection();
+        return sensorInitialised;
     }
+
+    // removed the check for sensorInitialised because we want to reset the sensor
+    filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
+    setAlpha(alpha_);
+    sensorInitialised = pressureSensor.begin(I2C_SDA, I2C_SCL, 0x76); // initialise BMP280 sensor
 
     if (sensorInitialised)
     {
         DBG("Sensor initialised");
+        return true;
     }
     else
     {
         DBG("Sensor failed to initialise");
+        return false;
     }
-
-    return sensorInitialised;
 }
 
 bool Controller::run()

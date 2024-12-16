@@ -36,19 +36,18 @@ bool Sd::createFile(String StartMsg, String prefix)
 
 bool Sd::init(int CS)
 {
-    if (!initialised)
+    // got rid of a condition to only initialise if not already initialised
+
+    // See if the card is present and can be initialized:
+    if (!SD.begin(CS))
     {
-        // See if the card is present and can be initialized:
-        if (!SD.begin(CS))
-        {
-            DBG("Card failed, or not present");
-            initialised = false;
-        }
-        else
-        {
-            DBG("Card initialized.");
-            initialised = true;
-        }
+        DBG("Card failed, or not present");
+        initialised = false;
+    }
+    else
+    {
+        DBG("Card initialised.");
+        initialised = true;
     }
     return initialised;
 }

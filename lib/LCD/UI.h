@@ -50,6 +50,8 @@ private:
     sim_data data;
     Controller controller;
 
+    bool errorShowing = false;
+
     const int MINPRESSURE = 200;
     const int MAXPRESSURE = 1000;
 

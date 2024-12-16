@@ -29,13 +29,13 @@ bool PressureSensor::begin(u_int8_t sensorPin_)
     return true;
 }
 
-bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
+bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr_)
 {
     sensorType = BMP280;
 
-    Wire.begin(SDA_, SCL_);
-
-    bmp = Adafruit_BMP280(&Wire);
+    wire.begin(SDA_, SCL_);
+    bmp = Adafruit_BMP280(&wire);
+    addr = addr_;
 
     if (!bmp.begin(addr))
     {
@@ -49,7 +49,7 @@ bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
                     Adafruit_BMP280::FILTER_X8,     /* Filtering. */
                     Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
-    delay(250);
+    delay(20);
 
     int numReadingsAvg = 20; // this will take 1 second to calibrate
 
@@ -70,6 +70,28 @@ bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr)
 float PressureSensor::getBasePressure()
 {
     return basePressure;
+}
+
+bool PressureSensor::testConnection()
+{
+    if (sensorType == BMP280)
+    {
+        uint8_t status = bmp.getStatus();
+
+        if (status == 243) // BMP280_REGISTER_STATUS, apparently this is what happens when we have error
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+    else if (sensorType == analog)
+    {
+        return true;
+    }
+    return false;
 }
 
 float PressureSensor::getPressure(bool absolute)

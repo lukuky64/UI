@@ -100,7 +100,6 @@ bool UI::checkButton(Adafruit_GFX_Button &btn, bool down)
 void UI::startPage()
 {
     bool devicesStatus = controller.initDevices();
-
     Adafruit_GFX_Button create_btn, upload_btn, settings_btn;
 
     create_btn.initButton(&tft, 160, 150, 200, 100, WHITE, WHITE, BLACK, (char *)"CREATE", 3);
@@ -118,8 +117,13 @@ void UI::startPage()
         if (!devicesStatus)
         {
             showError(true, "Devices not found");
+            delay(250);
+            showError(false);
+            delay(250);
 
-            if (controller.initDevices())
+            devicesStatus = controller.initDevices();
+
+            if (devicesStatus)
             {
                 showError(false);
             }
@@ -203,8 +207,9 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     uint8_t vertPadding = 10;
     uint8_t charWidth = 6 * fontSize;  // font 1 = 6x8
     uint8_t charHeight = 8 * fontSize; // font 1 = 6x8
-    uint8_t charsPerLine = (uint8_t)floor((width - (2 * horizPadding)) / charWidth);
-    uint8_t numLines = (uint8_t)ceil(text.length() / charsPerLine);
+    uint8_t charsPerLine = (uint8_t)floor((float)(width - (2 * horizPadding)) / (float)(charWidth));
+
+    uint8_t numLines = (uint8_t)ceil((float)text.length() / (float)charsPerLine);
     uint8_t rectHeight = vertPadding + ((charHeight + vertPadding) * numLines);
 
     String currentLineStr = "";
@@ -221,13 +226,16 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     {
         if (text[i] == ' ')
         {
-            if ((currentLineStr.length() + currentWord.length() + 1) <= charsPerLine)
+            bool exceedLineWidth = (((currentLineStr.length() + currentWord.length()) + 1) > charsPerLine);
+            bool endOfText = ((i + 1) == text.length());
+
+            if (endOfText || exceedLineWidth)
             {
-                currentLineStr += " " + currentWord;
-                currentWord = "";
-            }
-            else
-            {
+                if (endOfText)
+                {
+                    currentLineStr += currentWord;
+                }
+
                 uint16_t textWidth = currentLineStr.length() * charWidth;
                 uint16_t fontXPos = (width - textWidth) / 2;
                 tft.setCursor(xPos + fontXPos, (yPos + ((currentLineNum - 1) * (charHeight + vertPadding)) + vertPadding)); // Position the text (adjust x and y coordinates as needed)
@@ -235,6 +243,11 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
 
                 currentLineStr = currentWord;
                 currentLineNum++;
+            }
+            else
+            {
+                currentLineStr += " " + currentWord;
+                currentWord = "";
             }
         }
         else
@@ -354,6 +367,8 @@ void UI::calibrationPage()
             {
                 DBG("Calibration not initialised");
                 showError(true, "Calibration not init");
+                delay(500);
+                showError(false);
             }
         }
     }
@@ -400,11 +415,11 @@ void UI::createPage()
             state = POINT;
             loop = false;
         }
-        if (checkButton(motor_btn, down))
-        {
-            state = MOTOR;
-            loop = false;
-        }
+        // if (checkButton(motor_btn, down))
+        // {
+        //     state = MOTOR;
+        //     loop = false;
+        // }
     }
     DBG("EXITING CREATE PAGE");
     // clear page before going to the next
@@ -569,6 +584,7 @@ bool UI::handleSliderTouch(sliderObj &slider, bool down)
         {
             slider.sliderValue = mapFloat(pixel_x, 10, 10 + SLIDER_WIDTH, slider.minSliderValue, slider.maxSliderValue);
             drawSlider(slider);
+            delay(50);
             return true;
         }
         else
@@ -605,6 +621,19 @@ void UI::runPage()
 
         if (checkButton(start_btn, down))
         {
+            // check devices are still connected
+            bool devicesStatus = controller.initDevices();
+
+            if (!devicesStatus)
+            {
+                showError(true, "Devices not found");
+                delay(500);
+                showError(false);
+
+                loop = false;
+                break;
+            }
+
             int prev_x = 0;
 
             float maxVal = data.apogee * 1.1; // 10% more than max incase we overshoot
@@ -686,6 +715,8 @@ void UI::runPage()
             {
                 DBG("Controller not initialised");
                 showError(true, "Controller cannot init");
+                delay(500);
+                showError(false);
             }
         }
 
@@ -715,7 +746,8 @@ void UI::filteringPage()
     back_btn.drawButton(false);
     change_filter_btn.drawButton(false);
 
-    controller.setAlpha(sliderFilter.sliderValue);
+    sliderFilter.sliderValue = controller.getAlpha();
+
     drawSlider(sliderFilter);
     drawRectWithText(360, 100, ORANGE, String(sliderFilter.sliderValue));
 
@@ -785,11 +817,18 @@ void UI::showError(bool show, String msg)
 {
     if (show)
     {
-        String errorMsg = "ERROR: " + msg;
-        drawRectWithText(0, 100, RED, errorMsg);
+        if (!errorShowing)
+        {
+            DBG("Showing error");
+            String errorMsg = "ERROR"; //  + msg; // having some issue with removing so just show error
+            drawRectWithText(0, 100, RED, errorMsg);
+            errorShowing = true;
+        }
     }
     else
     {
-        drawRectWithText(0, 100, RED, "");
+        DBG("Hiding error");
+        drawRectWithText(0, 100, BLACK, "ERROR"); // black on black to hide for now :/
+        errorShowing = false;
     }
 }

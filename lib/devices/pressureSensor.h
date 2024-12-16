@@ -9,9 +9,10 @@ class PressureSensor
 public:
     PressureSensor();
     bool begin(uint8_t sensorPin_);
-    bool begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr);
+    bool begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr_);
 
     float getPressure(bool absolute);
+    bool testConnection();
 
     float getBasePressure();
 
@@ -33,6 +34,10 @@ private:
     Adafruit_BMP280 bmp;
     sensors_event_t pressure_event;
     Adafruit_Sensor *bmp_pressure = bmp.getPressureSensor();
+
+    TwoWire wire;
+
+    uint8_t addr;
 
     int ADC_RES;
 };
