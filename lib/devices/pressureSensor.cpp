@@ -15,18 +15,23 @@ bool PressureSensor::begin(u_int8_t sensorPin_)
     pinMode(sensorPin, INPUT);
     delay(50);
 
+    calibrateBasePressure();
+    return true;
+}
+
+void PressureSensor::calibrateBasePressure()
+{
     int numReadingsAvg = 20; // this will take 1 second to calibrate
     float avgPressure = 0;
 
     for (int i = 0; i < numReadingsAvg; i++)
     {
-        avgPressure += getPressure(true);
+        avgPressure += getPressure(false);
         delay(50);
     }
 
     basePressure = avgPressure / numReadingsAvg;
-    // DBG(basePressure);
-    return true;
+    DBG(basePressure);
 }
 
 bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr_)
@@ -51,17 +56,8 @@ bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr_)
 
     delay(20);
 
-    int numReadingsAvg = 20; // this will take 1 second to calibrate
+    calibrateBasePressure();
 
-    float avgPressure = 0;
-
-    for (int i = 0; i < numReadingsAvg; i++)
-    {
-        avgPressure += getPressure(false);
-        delay(50);
-    }
-
-    basePressure = avgPressure / numReadingsAvg;
     // DBG(basePressure);
 
     return true;

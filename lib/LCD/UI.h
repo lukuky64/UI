@@ -31,10 +31,11 @@ public:
     void motorPage();
     void endPage();
     void filteringPage();
+    void sensorPlotterPage();
     void showError(bool show, String msg = "");
 
     void drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String text);
-    void progressBar(String text, float progress, int16_t yPos);
+    void progressBar(String text, float progress, int16_t yPos, uint16_t colour);
 
     void drawSlider(sliderObj &slider);
     void drawGraph(float apogee, float finishTime);
@@ -84,7 +85,7 @@ private:
 
     // Constants for slider positions and graph area
     const int SCREEN_WIDTH = 320;
-    const int SCREEN_HEIGHT = 240;
+    const int SCREEN_HEIGHT = 480;
     const int GRAPH_TOP = 80;
     int GRAPH_HEIGHT = 100;
     const int SLIDER_Y = (SCREEN_HEIGHT / 2 + 10);
@@ -109,7 +110,8 @@ private:
         POINT,
         RUN,
         MOTOR,
-        FILTERING
+        FILTERING,
+        SENSOR_PLOT
     };
 
     pageState state;

@@ -32,6 +32,7 @@ public:
     bool initSensor(float alpha_ = 0.5);
     float getCalibrationProgress();
     void setCalibrationProgress(float calibrationProgress_);
+    void calibrateBasePressure();
 
     void initPID();
 

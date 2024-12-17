@@ -14,6 +14,11 @@ bool Controller::initDevices(float alpha_)
     return sdInitialised && sensorInitialised;
 }
 
+void Controller::calibrateBasePressure()
+{
+    pressureSensor.calibrateBasePressure();
+}
+
 Controller::~Controller()
 {
     // Ensure the controller is stopped
@@ -264,7 +269,7 @@ bool Controller::updateGains()
         }
     }
 
-    DBG("Kp: " + String(Kp, 6) + " Ki: " + String(Ki, 6) + " Kd: " + String(Kd, 6));
+    // DBG("Kp: " + String(Kp, 6) + " Ki: " + String(Ki, 6) + " Kd: " + String(Kd, 6));
     control_pid.SetTunings(Kp, Ki, Kd);
     return true;
 }

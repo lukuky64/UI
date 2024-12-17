@@ -16,6 +16,8 @@ public:
 
     float getBasePressure();
 
+    void calibrateBasePressure();
+
 private:
     float pressure;
     float basePressure; // might be useful for calibration

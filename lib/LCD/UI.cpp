@@ -269,12 +269,12 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     }
 }
 
-void UI::progressBar(String text, float progress, int16_t yPos)
+void UI::progressBar(String text, float progress, int16_t yPos, uint16_t colour)
 {
     float progressWidth = SCREEN_WIDTH * progress;
 
     tft.fillRect(progressWidth, yPos, SCREEN_WIDTH - progressWidth, 40, WHITE);
-    tft.fillRect(0, yPos, progressWidth, 40, PURPLE_2);
+    tft.fillRect(0, yPos, progressWidth, 40, colour);
 
     tft.setTextColor(BLACK);      // Set text color to white
     tft.setTextSize(2);           // Set text size (adjust as needed)
@@ -296,7 +296,7 @@ void UI::calibrationPage()
     drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
     drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
 
-    progressBar("", 0, 260);
+    progressBar("", 0, 260, PURPLE_2);
 
     bool loop = true;
 
@@ -334,7 +334,7 @@ void UI::calibrationPage()
                 {
                     if (controller.calibrateIterate())
                     {
-                        progressBar("Loading...", ((float)i / (float)numIterations), 260);
+                        progressBar("Loading...", ((float)i / (float)numIterations), 260, PURPLE_2);
                         delay(20);
                     }
                     else
@@ -383,10 +383,10 @@ void UI::calibrationPage()
                         }
                     }
 
-                    progressBar("Calibrating...", progress, 260);
+                    progressBar("Calibrating...", progress, 260, PURPLE_2);
                 }
 
-                progressBar("", 0, 260);
+                progressBar("", 0, 260, PURPLE_2);
                 drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
                 drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
             }
@@ -764,7 +764,7 @@ void UI::runPage()
     GRAPH_HEIGHT /= 2;
 }
 
-// ************************ MOTOR ************************
+// ************************ FILTERING ************************
 
 void UI::filteringPage()
 {
@@ -801,8 +801,15 @@ void UI::filteringPage()
         if (checkButton(change_filter_btn, down))
         {
             controller.setAlpha(sliderFilter.sliderValue);
-            state = SETTINGS;
-            loop = false;
+        }
+
+        if (controller.updateReading())
+        {
+            float altitude = ROCKET_SIM::pressureToAltitude(controller.getLatestPressure());
+            float ratio = mapFloat(altitude, -1000, 1000, 0, 1);
+            String altitudeStr = "altitude: " + String(altitude, 1) + "(m)";
+
+            progressBar("altitude (m)", ratio, (SCREEN_HEIGHT - 40), ORANGE);
         }
     }
 
