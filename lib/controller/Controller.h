@@ -25,12 +25,16 @@ public:
     float getLatestSetpoint();
     bool calibrateSystem(float setPoint);
     bool initCalibrateSystem(float setPoint);
-    bool LogDesiredData(String firstData, bool forceLog);
+    bool LogDesiredData(String stateData, bool forceLog);
     bool startCalibrateSystem();
     bool calibrateIterate();
     bool updateReading();
     bool initSensor(float alpha_ = 0.5);
     float getCalibrationProgress();
+    void setCalibrationProgress(float calibrationProgress_);
+
+    void initPID();
+
     bool updateGains();
     bool initGainSchedule();
     void setAlpha(float alpha_);
@@ -45,8 +49,8 @@ private:
     float alpha;           // high alpha means more weight to new data
 
     // PID control
-    double Setpoint, Input, Output;
-    double Kp = -0.01;
+    double Setpoint, Input, Output = 0;
+    double Kp = 0.01;
     double Ki = 0;
     double Kd = 0;
 

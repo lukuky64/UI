@@ -23,6 +23,7 @@ public:
     bool loadGainsFromFile(const char *filename, gainScheduleData &gainSchedule);
 
     String createUniqueLogFile(String prefix);
+    bool createNestedDirectories(String prefix);
 
 private:
     File dataFile;

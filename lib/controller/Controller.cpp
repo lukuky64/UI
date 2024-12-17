@@ -4,9 +4,6 @@
 Controller::Controller() : running(false), calibrationRunning(false), sensorInitialised(false), sdInitialised(false), dataInitialised(false), gainScheduleInitialised(false), alpha(0.5), logFreq(20)
 {
     logTime = 1000000 / logFreq; // convert to microseconds
-
-    control_pid.SetMode(AUTOMATIC);
-    control_pid.SetOutputLimits(-100, 100); // 0-100% speed, sign indicates direction
 }
 
 bool Controller::initDevices(float alpha_)
@@ -49,7 +46,7 @@ bool Controller::initGainSchedule()
 
     if (sdInitialised)
     {
-        gainScheduleInitialised = sd.loadGainsFromFile("gains.csv", gainSchedule);
+        gainScheduleInitialised = sd.loadGainsFromFile("/CONTROL/gains.csv", gainSchedule);
         if (!gainScheduleInitialised)
         {
             DBG("Failed to load gain schedule from SD card");
@@ -112,7 +109,10 @@ bool Controller::initCalibrateSystem(float setPointPressure)
 
     calibrationState = ground; // set initial state
 
-    bool fileCreated = sd.createFile("state, time, pressure", "cal");
+    String alpha_str = String((uint8_t)(alpha * 100)); // Convert float to String
+    alpha_str.replace('.', '_');                       // Replace '.' with '_'
+
+    bool fileCreated = sd.createFile("state, time, pressure", String("/CALIB/a_" + alpha_str));
 
     DBG("sensor: " + String(sensorInitialised) + " sd: " + String(sdInitialised) + " file: " + String(fileCreated));
 
@@ -123,6 +123,7 @@ bool Controller::initCalibrateSystem(float setPointPressure)
 
 bool Controller::startCalibrateSystem()
 {
+
     if (sensorInitialised && sdInitialised)
     {
         if ((!calibrationRunning))
@@ -130,6 +131,12 @@ bool Controller::startCalibrateSystem()
             calibrationRunning = true;
             startMillis = millis();
             currentSeconds = 0;
+        }
+
+        if (!updateReading())
+        {
+            DBG("Failed to get pressure reading");
+            calibrationRunning = false;
         }
 
         if (!LogDesiredData(String(calibrationState), true))
@@ -142,11 +149,11 @@ bool Controller::startCalibrateSystem()
     return calibrationRunning;
 }
 
-bool Controller::LogDesiredData(String firstData, bool forceLog)
+bool Controller::LogDesiredData(String stateData, bool forceLog)
 {
     if (forceLog)
     {
-        String dataEntry = firstData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
+        String dataEntry = stateData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
         lastLogTime = micros();
         return sd.writeToBuffer(dataEntry);
     }
@@ -155,7 +162,7 @@ bool Controller::LogDesiredData(String firstData, bool forceLog)
         timePassed = micros() - lastLogTime;
         if (timePassed >= logTime)
         {
-            String dataEntry = firstData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
+            String dataEntry = stateData + String(",") + String(currentSeconds) + String(",") + String(Input) + String("\n");
             lastLogTime = micros();
             return sd.writeToBuffer(dataEntry);
         }
@@ -226,11 +233,13 @@ bool Controller::updateGains()
     {
         if (Input >= gainSchedule.data[i][3])
         {
-            Kp = gainSchedule.data[i][0];
-            Ki = gainSchedule.data[i][1];
-            Kd = gainSchedule.data[i][2];
+            // must be positive values
+            Kp = abs(gainSchedule.data[i][0]);
+            Ki = abs(gainSchedule.data[i][1]);
+            Kd = abs(gainSchedule.data[i][2]);
 
             control_pid.SetTunings(Kp, Ki, Kd);
+
             break;
         }
     }
@@ -248,6 +257,11 @@ void Controller::stop()
 float Controller::getCalibrationProgress()
 {
     return calibrationProgress;
+}
+
+void Controller::setCalibrationProgress(float calibrationProgress_)
+{
+    calibrationProgress = calibrationProgress_;
 }
 
 bool Controller::updateReading()
@@ -270,6 +284,12 @@ void Controller::setAlpha(float alpha_)
 {
     // can't be be 1 because reading will never change
     alpha = constrain(alpha_, 0, 0.99);
+}
+
+void Controller::initPID()
+{
+    control_pid.SetMode(AUTOMATIC);
+    control_pid.SetOutputLimits(-100, 100); // 0-100% speed, sign indicates direction
 }
 
 float Controller::getAlpha()
@@ -308,7 +328,7 @@ bool Controller::iterate()
         running = updateGains();
         control_pid.Compute();
 
-        DBG("Setpoint: " + String(Setpoint) + " Input: " + String(Input) + " Output: " + String(Output));
+        // DBG("Setpoint: " + String(Setpoint) + " Input: " + String(Input) + " Output: " + String(Output));
 
         pump.sendCommand(Output);
 

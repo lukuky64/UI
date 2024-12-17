@@ -1,7 +1,7 @@
 % Read the data from CSV
 
-filename2 = 'cal_11_12_1.csv';
-filename1 = 'CAL_30.csv';
+filename2 = 'calibration files/CAL_9_a=0.5.csv';
+filename1 = 'calibration files/CAL_8_a=0.5.csv';
  
 data1 = readtable(filename1);
 data2 = readtable(filename2);

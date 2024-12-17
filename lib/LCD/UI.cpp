@@ -215,6 +215,7 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     String currentLineStr = "";
     uint8_t currentLineNum = 1;
     String currentWord = "";
+    uint8_t numWords = 0;
 
     tft.fillRect(xPos, yPos, width, rectHeight, colour);
     tft.setTextColor(BLACK);   // Set text color to white
@@ -226,6 +227,7 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
     {
         if (text[i] == ' ')
         {
+            numWords++;
             bool exceedLineWidth = (((currentLineStr.length() + currentWord.length()) + 1) > charsPerLine);
             bool endOfText = ((i + 1) == text.length());
 
@@ -233,6 +235,11 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
             {
                 if (endOfText)
                 {
+                    if (numWords > 1)
+                    {
+                        currentLineStr += " ";
+                    }
+
                     currentLineStr += currentWord;
                 }
 
@@ -242,11 +249,16 @@ void UI::drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String t
                 tft.print(currentLineStr);                                                                                  // Display the text
 
                 currentLineStr = currentWord;
+                currentWord = "";
                 currentLineNum++;
             }
             else
             {
-                currentLineStr += " " + currentWord;
+                if (numWords > 1)
+                {
+                    currentLineStr += " ";
+                }
+                currentLineStr += currentWord;
                 currentWord = "";
             }
         }
@@ -322,7 +334,7 @@ void UI::calibrationPage()
                 {
                     if (controller.calibrateIterate())
                     {
-                        progressBar("Loading...", i / numIterations, 260);
+                        progressBar("Loading...", ((float)i / (float)numIterations), 260);
                         delay(20);
                     }
                     else
@@ -342,6 +354,7 @@ void UI::calibrationPage()
                     if (checkButton(stop_btn, down))
                     {
                         controller.stop();
+                        controller.setCalibrationProgress(0);
                         loop = false;
                         eStop = true;
                         calibrateInitialised = false;
@@ -351,17 +364,31 @@ void UI::calibrationPage()
 
                     float progress = controller.getCalibrationProgress();
 
-                    if (progress < 0.5)
+                    bool currentState = (progress < 0.5);
+                    static bool lastState = !currentState;
+
+                    if (currentState != lastState)
                     {
-                        drawRectWithText(60, SCREEN_WIDTH, PURPLE_3, "1. Step input to 5km");
-                    }
-                    else
-                    {
-                        drawRectWithText(105, SCREEN_WIDTH, PURPLE_3, "2. Leaking to 0km");
+                        lastState = currentState;
+
+                        if (progress < 0.5)
+                        {
+                            drawRectWithText(60, SCREEN_WIDTH, PURPLE_3, "1. Step input to 5km");
+                            drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
+                        }
+                        else
+                        {
+                            drawRectWithText(105, SCREEN_WIDTH, PURPLE_3, "2. Leaking to 0km");
+                            drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
+                        }
                     }
 
                     progressBar("Calibrating...", progress, 260);
                 }
+
+                progressBar("", 0, 260);
+                drawRectWithText(105, SCREEN_WIDTH, PURPLE_4, "2. Leaking to 0km");
+                drawRectWithText(60, SCREEN_WIDTH, PURPLE_4, "1. Step input to 5km");
             }
             else
             {
@@ -650,6 +677,8 @@ void UI::runPage()
             {
                 DBG("Controller initialised");
 
+                controller.initPID();
+
                 bool run = controller.run();
 
                 while (run)
@@ -819,7 +848,6 @@ void UI::showError(bool show, String msg)
     {
         if (!errorShowing)
         {
-            DBG("Showing error");
             String errorMsg = "ERROR"; //  + msg; // having some issue with removing so just show error
             drawRectWithText(0, 100, RED, errorMsg);
             errorShowing = true;
@@ -827,7 +855,6 @@ void UI::showError(bool show, String msg)
     }
     else
     {
-        DBG("Hiding error");
         drawRectWithText(0, 100, BLACK, "ERROR"); // black on black to hide for now :/
         errorShowing = false;
     }

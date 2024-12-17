@@ -12,9 +12,66 @@ Sd::~Sd()
     }
 }
 
+bool Sd::createNestedDirectories(String prefix)
+{
+    bool success = true;
+
+    // Count how many slashes are in the prefix
+    uint8_t count = 0;
+    for (int i = 0; i < prefix.length(); i++)
+    {
+        if (prefix.charAt(i) == '/')
+        {
+            count++;
+        }
+    }
+
+    if (count > 0)
+    {
+        int start = 0;
+        if (prefix.charAt(0) == '/')
+        {
+            start = 1; // Skip the leading slash
+        }
+
+        // Start from 'start' instead of 0 when taking the substring
+        int pos = prefix.indexOf('/', start);
+        while (pos != -1)
+        {
+            String folder = prefix.substring(start, pos);
+
+            DBG("Creating folder: " + folder);
+
+            if (!SD.exists(folder))
+            {
+                if (!SD.mkdir(folder))
+                {
+                    DBG("Failed to create folder: " + folder);
+                    success = false;
+                    break;
+                }
+                else
+                {
+                    DBG("Folder created: " + folder);
+                }
+            }
+            else
+            {
+                DBG("Folder exists: " + folder);
+            }
+            pos = prefix.indexOf('/', pos + 1);
+        }
+    }
+
+    return success;
+}
+
 bool Sd::createFile(String StartMsg, String prefix)
 {
     bool success = false;
+
+    // first lets make sure we have the correct folder
+    createNestedDirectories(prefix);
 
     fileName = createUniqueLogFile(prefix);
     DBG("File name: " + fileName);
@@ -83,7 +140,7 @@ String Sd::createUniqueLogFile(String prefix)
     // Generate a unique file name
     do
     {
-        uniqueFileName = "/" + String(prefix) + "_" + String(currentLogIndex++) + ".txt";
+        uniqueFileName = String(prefix) + "_" + String(currentLogIndex++) + ".csv";
     } while (SD.exists(uniqueFileName.c_str())); // Check if the file already exists
 
     return uniqueFileName;
@@ -136,7 +193,7 @@ bool Sd::loadGainsFromFile(const char *filename, gainScheduleData &gainSchedule)
 
             // Parse the float value
             char *endPtr;
-            float value = strtof(ptr, &endPtr);
+            double value = strtof(ptr, &endPtr);
 
             if (ptr == endPtr)
             {

@@ -13,6 +13,8 @@
 
 #include "PID_v1.hpp"
 
+#include "Debug.hpp"
+
 /*Constructor (...)*********************************************************
  *    The parameters specified here are those for for which we can't set up
  *    reliable defaults, so we need to have the user set them.
@@ -66,6 +68,8 @@ bool PID::Compute()
         double error = *mySetpoint - input;
         double dInput = (input - lastInput);
         outputSum += (ki * error);
+
+        // DBG("Input: " + String(input) + " Setpoint: " + String(*mySetpoint) + " Error: " + String(error) + " dInput: " + String(dInput) + " outputSum: " + String(outputSum));
 
         /*Add Proportional on Measurement, if P_ON_M is specified*/
         if (!pOnE)
