@@ -9,7 +9,7 @@ Controller::Controller() : running(false), calibrationRunning(false), sensorInit
 bool Controller::initDevices(float alpha_)
 {
     sdInitialised = sd.init(SD_CS);
-    initSensor(alpha_);
+    sensorInitialised = initSensor(alpha_);
 
     return sdInitialised && sensorInitialised;
 }
@@ -63,6 +63,8 @@ bool Controller::initGainSchedule()
 
 bool Controller::initSensor(float alpha_)
 {
+    filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
+
     if (sensorInitialised)
     {
         DBG("Testing sensor connection");
@@ -71,7 +73,7 @@ bool Controller::initSensor(float alpha_)
     }
 
     // removed the check for sensorInitialised because we want to reset the sensor
-    filteredReading = 101325; // initial guess of sea level pressure. We want to reset it here upon reuse
+
     setAlpha(alpha_);
     sensorInitialised = pressureSensor.begin(I2C_SDA, I2C_SCL, 0x76); // initialise BMP280 sensor
 
@@ -176,6 +178,18 @@ bool Controller::calibrateIterate()
 
     if (calibrationRunning && updateReading())
     {
+        calibrating = (Input >= (safePressureLow) && Input <= (safePressureHigh)); // check if reading is within bounds (-100m to 10,000m)
+
+        if (!calibrating)
+        {
+            pump.sendCommand(0.0);
+            calibrationRunning = false;
+            calibrationProgress = 0;
+
+            DBG("Failed to get pressure reading or out of bounds");
+            return false;
+        }
+
         currentSeconds = (float(millis()) - float(startMillis)) / 1000.0f; // time since start in seconds
 
         if (calibrationState == ground)
@@ -229,21 +243,29 @@ bool Controller::updateGains()
         return false;
     }
 
+    // initialise gains incase we don't find a match
+
+    Kp = abs(gainSchedule.data[-1][0]);
+    Ki = abs(gainSchedule.data[-1][1]);
+    Kd = abs(gainSchedule.data[-1][2]);
+
     for (int i = 0; i < gainSchedule.height; i++)
     {
-        if (Input >= gainSchedule.data[i][3])
+        if (Input <= gainSchedule.data[i][3])
         {
             // must be positive values
             Kp = abs(gainSchedule.data[i][0]);
             Ki = abs(gainSchedule.data[i][1]);
             Kd = abs(gainSchedule.data[i][2]);
 
-            control_pid.SetTunings(Kp, Ki, Kd);
+            DBG("match found at: " + String(i));
 
             break;
         }
     }
 
+    DBG("Kp: " + String(Kp, 6) + " Ki: " + String(Ki, 6) + " Kd: " + String(Kd, 6));
+    control_pid.SetTunings(Kp, Ki, Kd);
     return true;
 }
 
@@ -283,13 +305,13 @@ bool Controller::updateReading()
 void Controller::setAlpha(float alpha_)
 {
     // can't be be 1 because reading will never change
-    alpha = constrain(alpha_, 0, 0.99);
+    alpha = constrain(alpha_, 0.2, 0.99);
 }
 
 void Controller::initPID()
 {
     control_pid.SetMode(AUTOMATIC);
-    control_pid.SetOutputLimits(-100, 100); // 0-100% speed, sign indicates direction
+    control_pid.SetOutputLimits(-100, 0); // 0-100% speed, sign indicates direction. pump can only suck so output is between 0 and 100
 }
 
 float Controller::getAlpha()
@@ -307,20 +329,30 @@ bool Controller::iterate()
 
         running = updateReading();
 
+        running = (Input >= (safePressureLow) && Input <= (safePressureHigh)); // check if reading is within bounds (-100m to 10,000m)
+
+        if (!running)
+        {
+            pump.sendCommand(0.0);
+            DBG("Failed to get pressure reading or out of bounds");
+            return false;
+        }
+
         // find closest time in data
         for (i; i < data->num_points; i++)
         {
-            if (i > (data->num_points - 1))
-            {
-                running = false;
-                break;
-            }
-
             if (data->time[i] >= currentSeconds)
             {
                 i++;
                 break;
             }
+        }
+
+        if (data->time[data->num_points] <= currentSeconds)
+        {
+            pump.sendCommand(0.0);
+            running = false;
+            return running;
         }
 
         Setpoint = float(data->pressure[i]);
@@ -336,6 +368,7 @@ bool Controller::iterate()
     }
     else
     {
+        pump.sendCommand(0.0);
         DBG("Controller not running");
         return false;
     }

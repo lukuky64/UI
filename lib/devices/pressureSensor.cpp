@@ -45,8 +45,8 @@ bool PressureSensor::begin(uint8_t SDA_, uint8_t SCL_, uint8_t addr_)
     /* Default settings from datasheet. */
     bmp.setSampling(Adafruit_BMP280::MODE_FORCED,   /* Operating Mode. */
                     Adafruit_BMP280::SAMPLING_NONE, /* Temp. oversampling */
-                    Adafruit_BMP280::SAMPLING_X8,   /* Pressure oversampling */
-                    Adafruit_BMP280::FILTER_X8,     /* Filtering. */
+                    Adafruit_BMP280::SAMPLING_X16,  /* Pressure oversampling */
+                    Adafruit_BMP280::FILTER_X16,    /* Filtering. */
                     Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
     delay(20);

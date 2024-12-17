@@ -54,6 +54,9 @@ private:
     double Ki = 0;
     double Kd = 0;
 
+    uint32_t safePressureLow = 26436;   // -100m in Pa
+    uint32_t safePressureHigh = 102532; // 10,000m in Pa
+
     gainScheduleData gainSchedule;
 
     PID control_pid = PID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
