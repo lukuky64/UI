@@ -41,7 +41,7 @@ bool Controller::initData(sim_data &data_)
     return dataInitialised && sensorInitialised && gainScheduleInitialised;
 }
 
-bool Controller::initGainSchedule()
+bool Controller::initGainSchedule(String filePath)
 {
     // there should be a file on the SD card that contains the gain schedules for the controller
     // the file should be in the format:
@@ -51,10 +51,14 @@ bool Controller::initGainSchedule()
 
     if (sdInitialised)
     {
-        gainScheduleInitialised = sd.loadGainsFromFile("/CONTROL/gains.csv", gainSchedule);
+        gainScheduleInitialised = sd.loadGainsFromFile(filePath.c_str(), gainSchedule);
         if (!gainScheduleInitialised)
         {
             DBG("Failed to load gain schedule from SD card");
+        }
+        else
+        {
+            DBG("Gain schedule initialised");
         }
     }
     else
@@ -64,6 +68,54 @@ bool Controller::initGainSchedule()
     }
 
     return gainScheduleInitialised;
+}
+
+void Controller::getFilesInFolder(String folderName, String files[], int maxFiles, int &fileCount, String extension)
+{
+    fileCount = 0;
+
+    File folder = SD.open(folderName);
+
+    if (!folder)
+    {
+        DBG("Failed to open folder: " + folderName);
+        return;
+    }
+
+    // Loop through all the files in the folder
+    while (true)
+    {
+        File file = folder.openNextFile(); // Open the next file
+        if (!file)
+        {
+            // No more files
+            break;
+        }
+
+        if (file.isDirectory())
+        {
+            file.close();
+            continue;
+        }
+
+        if (fileCount >= maxFiles)
+        {
+            DBG("Maximum number of files reached");
+            file.close();
+            break;
+        }
+
+        if (String(file.name()).endsWith(extension))
+        {
+            // Add the file name to the array
+            files[fileCount] = file.name();
+            fileCount++;
+        }
+
+        file.close();
+    }
+
+    folder.close();
 }
 
 bool Controller::initSensor(float alpha_)
@@ -263,7 +315,7 @@ bool Controller::updateGains()
             Ki = abs(gainSchedule.data[i][1]);
             Kd = abs(gainSchedule.data[i][2]);
 
-            DBG("match found at: " + String(i));
+            // DBG("match found at: " + String(i));
 
             break;
         }

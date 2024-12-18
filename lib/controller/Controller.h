@@ -37,7 +37,8 @@ public:
     void initPID();
 
     bool updateGains();
-    bool initGainSchedule();
+    bool initGainSchedule(String filePath = "/CONTROL/gains.csv");
+    void getFilesInFolder(String folderName, String files[], int maxFiles, int &fileCount, String extension);
     void setAlpha(float alpha_);
     float getAlpha();
 

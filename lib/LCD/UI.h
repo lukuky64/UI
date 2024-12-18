@@ -18,8 +18,8 @@ class UI
 public:
     UI();
     void begin();
-    bool Touch_getXY();
-    void command();
+
+    // Pages
     void startPage();
     void settingsPage();
     void drawRectWithText();
@@ -32,16 +32,20 @@ public:
     void endPage();
     void filteringPage();
     void sensorPlotterPage();
-    void showError(bool show, String msg = "");
+    void gainSelectPage();
 
+    // Creating objects
+    void showError(bool show, String msg = "");
     void drawRectWithText(int16_t yPos, int16_t width, uint16_t colour, String text);
     void progressBar(String text, float progress, int16_t yPos, uint16_t colour);
-
     void drawSlider(sliderObj &slider);
     void drawGraph(float apogee, float finishTime);
-    bool handleSliderTouch(sliderObj &slider, bool down);
 
+    // Event handling
+    bool handleSliderTouch(sliderObj &slider, bool down);
     bool checkButton(Adafruit_GFX_Button &btn, bool down);
+    bool Touch_getXY();
+    void command();
 
 private:
     float mapFloat(float x, float in_min, float in_max, float out_min, float out_max);
@@ -56,7 +60,7 @@ private:
     const int MINPRESSURE = 200;
     const int MAXPRESSURE = 1000;
 
-    const int touch_delay = 100;
+    const int touch_delay = 200;
 
     // 320x480 ID=0x6814
     const int XP = 7;
@@ -111,7 +115,7 @@ private:
         RUN,
         MOTOR,
         FILTERING,
-        SENSOR_PLOT
+        GAIN_SELECT
     };
 
     pageState state;

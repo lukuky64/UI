@@ -50,6 +50,9 @@ void UI::command()
     case FILTERING:
         filteringPage();
         break;
+    case GAIN_SELECT:
+        gainSelectPage();
+        break;
     default:
         startPage();
         break;
@@ -156,14 +159,16 @@ void UI::startPage()
 
 void UI::settingsPage()
 {
-    Adafruit_GFX_Button back_btn, calibrate_btn, change_filter_btn;
+    Adafruit_GFX_Button back_btn, calibrate_btn, change_filter_btn, gain_select_btn;
     back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
-    calibrate_btn.initButton(&tft, 160, 150, 200, 100, WHITE, WHITE, BLACK, (char *)"CALIBRATE", 3);
-    change_filter_btn.initButton(&tft, 160, 280, 200, 100, WHITE, WHITE, BLACK, (char *)"FILTER", 3);
+    calibrate_btn.initButton(&tft, 160, 120, 200, 100, WHITE, WHITE, BLACK, (char *)"CALIBRATE", 3);
+    change_filter_btn.initButton(&tft, 160, 250, 200, 100, WHITE, WHITE, BLACK, (char *)"FILTER", 3);
+    gain_select_btn.initButton(&tft, 160, 380, 200, 100, WHITE, WHITE, BLACK, (char *)"GAIN", 3);
 
     back_btn.drawButton(false);
     calibrate_btn.drawButton(false);
     change_filter_btn.drawButton(false);
+    gain_select_btn.drawButton(false);
 
     bool loop = true;
 
@@ -187,6 +192,12 @@ void UI::settingsPage()
         if (checkButton(change_filter_btn, down))
         {
             state = FILTERING;
+            loop = false;
+        }
+
+        if (checkButton(gain_select_btn, down))
+        {
+            state = GAIN_SELECT;
             loop = false;
         }
     }
@@ -843,6 +854,84 @@ void UI::motorPage()
     }
 
     DBG("EXITING MOTOR PAGE");
+    // clear page before going to the next
+    tft.fillScreen(BLACK);
+}
+
+void UI::gainSelectPage()
+{
+    Adafruit_GFX_Button back_btn, set_btn;
+    back_btn.initButton(&tft, 20, 20, 40, 40, BLACK, RED, BLACK, (char *)"<", 3);
+    set_btn.initButton(&tft, 160, 380, 200, 100, WHITE, WHITE, BLACK, (char *)"SET", 3);
+
+    back_btn.drawButton(false);
+
+    set_btn.drawButton(true);
+
+    // get all files in gain folder and list them as buttons
+
+    String folder = "/CONTROL";
+    const int maxNumFiles = 5; // Maximum number of files you expect
+    String files[maxNumFiles]; // Array to hold filenames
+    int fileCount = 0;         // Actual number of files found
+
+    controller.getFilesInFolder(folder, files, maxNumFiles, fileCount, ".CSV");
+
+    Adafruit_GFX_Button gain_btns[fileCount];
+
+    for (int i = 0; i < fileCount; i++)
+    {
+        gain_btns[i].initButton(&tft, 160, 70 + (i * 50), SCREEN_WIDTH, 40, WHITE, WHITE, BLACK, (char *)files[i].c_str(), 2);
+        gain_btns[i].drawButton(false);
+    }
+
+    int selectedFileIter = -1;
+
+    bool loop = true;
+
+    while (loop)
+    {
+        bool down = Touch_getXY();
+
+        if (checkButton(back_btn, down))
+        {
+            state = SETTINGS;
+
+            loop = false;
+        }
+
+        for (int i = 0; i < fileCount; i++)
+        {
+            if (checkButton(gain_btns[i], down))
+            {
+                gain_btns[i].drawButton(true);
+                set_btn.drawButton(false);
+                selectedFileIter = i;
+                break;
+            }
+        }
+
+        if (checkButton(set_btn, down))
+        {
+            if (selectedFileIter != -1)
+            {
+                bool gainsLoaded = controller.initGainSchedule((String)(folder + "/" + files[selectedFileIter]));
+                if (!gainsLoaded)
+                {
+                    showError(true, "Failed to load gains");
+                    delay(500);
+                    showError(false);
+                }
+
+                gain_btns[selectedFileIter].drawButton(false);
+                set_btn.drawButton(true);
+                selectedFileIter = -1;
+            }
+        }
+    }
+
+    DBG("EXITING FILTERING PAGE");
+
     // clear page before going to the next
     tft.fillScreen(BLACK);
 }

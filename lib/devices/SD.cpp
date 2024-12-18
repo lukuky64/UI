@@ -188,7 +188,7 @@ bool Sd::loadGainsFromFile(const char *filename, gainScheduleData &gainSchedule)
             if (*ptr == '\0')
             {
                 DBG("Incomplete data in line");
-                break;
+                return false;
             }
 
             // Parse the float value
